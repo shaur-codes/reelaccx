@@ -1,41 +1,38 @@
-import instaloader, aiohttp
-from json import load,dump
+import instaloader
+import aiohttp
+from json import load, dump
+from loguru import logger
+from colorama import Fore, Style, init
 
 
-L = instaloader.Instaloader(max_connection_attempts = 10,request_timeout=300)
-username = ['astrophysicsmania','wtf_su2']
-pre='[bot.CORE] '
-query=None
-
+init(autoreset=True)
+L = instaloader.Instaloader(max_connection_attempts=10, request_timeout=300)
+pre_bot = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
+pre_core = f"{Fore.BLUE}[bot.CORE]{Style.RESET_ALL}"
+query = None
+logger.add("bot_core.log", format="{time} {level} {message}", level="INFO")
 
 def loadx():
     try:
-        with open('records.json','r') as file:
+        with open('records.json', 'r') as file:
             data = load(file)
-            file.close()
             return data
     except Exception as e:
-        print(f"{pre}[loadx()] {e}")
-
+        logger.error(f"{pre_core} [loadx()] {e}")
 
 def dumpx(data):
     try:
-            
-        with open('records.json','w') as f:
-            dump(data,f,indent=4)
-        f.close()
+        with open('records.json', 'w') as f:
+            dump(data, f, indent=4)
     except Exception as e:
-        print(f"{pre}[dumpx()] {e}")
-
+        logger.error(f"{pre_core} [dumpx()] {e}")
 
 async def update_shortcodes(username):
-    print(f"{pre}Updating shortcodes for {username}")
+    logger.info(f"{pre_core} Updating shortcodes for {username}")
     global shortcodes
     profile = instaloader.Profile.from_username(L.context, username)
     posts = profile.get_posts()
-    shortcodes = []
-    for post in posts:
-        shortcodes.append(post.shortcode)
+    shortcodes = [post.shortcode for post in posts]
     data = loadx()
     accounts = data["accounts"]
     user_found = False  
@@ -44,71 +41,62 @@ async def update_shortcodes(username):
             account['shortcodes'] = shortcodes
             user_found = True
             break  
-        # ["posts"] can be updated in records using check_for_new_post()
     if user_found:
         dumpx(data=data)
-        print(f'{pre}Account {username} has been updated.')
+        logger.info(f'{pre_core} Account {username} has been updated.')
         return len(shortcodes)
     else:
-        print(f'{pre}Error: Account {username} not found.')
+        logger.error(f'{pre_core} Error: Account {username} not found.')
         return False
 
-
 def get_latest_post(username):
-    data=loadx()
-    accounts=data["accounts"]
+    data = loadx()
+    accounts = data["accounts"]
     for account in accounts:
-        if account["name"]==username:
-            post=account['shortcodes']
-            latest_post=post[0]
+        if account["name"] == username:
+            post = account['shortcodes']
+            latest_post = post[0]
             return latest_post
-
-    print(f"{pre} Error: account {username} not found in the records")
+    logger.error(f"{pre_core} Error: account {username} not found in the records")
     return False
-
 
 async def update_account_records(query):
     try:
-        data=loadx()
-        freq=len(data["accounts"])
-        thresh=data["thresh"]
+        data = loadx()
+        freq = len(data["accounts"])
+        thresh = data["thresh"]
         if freq > thresh:
             try:
                 updated_account_name = data["accounts"][freq-1]["name"]
-                data["thresh"]=freq
-                a=await update_shortcodes(username=updated_account_name)-1#-------------------------------> here
-                data["posts"]=a
-                print(f"{pre}New user '{updated_account_name}' found")
+                data["thresh"] = freq
+                a = await update_shortcodes(username=updated_account_name) - 1
+                data["posts"] = a
+                logger.info(f"{pre_core} New user '{updated_account_name}' found")
                 dumpx(data=data)
-                print(f"{pre}Updated threshold to {freq}")
+                logger.info(f"{pre_core} Updated threshold to {freq}")
             except Exception as e:
-                print(f"{pre}[update_account()][0] {e}")
+                logger.error(f"{pre_core} [update_account()][0] {e}")
         else:
-            if query=='update':
-                print(f"{pre} new account was not found.")
+            if query == 'update':
+                logger.info(f"{pre_core} new account was not found.")
             else:
-                print(f"{pre} Everything is up-to-date")
+                logger.info(f"{pre_core} Everything is up-to-date")
     except Exception as e:
-        print(f"{pre}[update_account()][1] {e}")
-
+        logger.error(f"{pre_core} [update_account()][1] {e}")
 
 def account_position(username) -> int:
-    accounts=loadx()["accounts"]
-    for i,account in enumerate(accounts):
-        if account["name"]==username:
+    accounts = loadx()["accounts"]
+    for i, account in enumerate(accounts):
+        if account["name"] == username:
             return i
     return -1
 
-
 async def get_post_url(shortcode) -> str:
-    post=instaloader.Post.from_shortcode(L.context,shortcode=shortcode)
+    post = instaloader.Post.from_shortcode(L.context, shortcode=shortcode)
     if post.is_video:
-        video_url=post.video_url
-        return video_url
+        return post.video_url
     else:
-        picture_url=post.url
-        return picture_url
-
+        return post.url
 
 async def dump_post(url: str, filename: str) -> bool:
     try:
@@ -120,68 +108,61 @@ async def dump_post(url: str, filename: str) -> bool:
                         f.write(content)
                     return True
                 else:
-                    print(f"Error: Received status code {response.status}")
+                    logger.error(f"{pre_core} Error: Received status code {response.status}")
                     return False
     except aiohttp.ClientError as e:
-        print(f"Error downloading file: {e}")
+        logger.error(f"{pre_core} Error downloading file: {e}")
         return False
 
-
 async def check_for_new_post(username) -> bool:
-    data=loadx()
+    data = loadx()
     position = account_position(username=username)
-    if position !=-1:
-            old_data=data["accounts"][position]["posts"]
+    if position != -1:
+        old_data = data["accounts"][position]["posts"]
     else:
-        print(f"{pre} Error: Account {username} not found. trying to update records...")
-        update_account_records(query='update')
-    
-    new_data=await update_shortcodes(username=username)
-    if new_data>old_data:
-        old_data=new_data
-        data=loadx()
-        data["accounts"][position]["posts"]=old_data #here yaha pe latest post 
+        logger.error(f"{pre_core} Error: Account {username} not found. trying to update records...")
+        await update_account_records(query='update')
+        return False
+
+    new_data = await update_shortcodes(username=username)
+    if new_data > old_data:
+        old_data = new_data
+        data["accounts"][position]["posts"] = old_data
         dumpx(data=data)
-        print(f"{pre}New post found for {username}")
+        logger.info(f"{pre_core} New post found for {username}")
         return True
     else:
-        print(f"{pre}New post for {username} NOT FOUND")
-
+        logger.info(f"{pre_core} New post for {username} NOT FOUND")
+        return False
 
 def add_new_account(username):
-    data=loadx()
-    accounts=data["accounts"]
+    data = loadx()
+    accounts = data["accounts"]
     for account in accounts:
-        if account["name"]==username:
-            print(f"{pre}Account {username} already present in records")
-        else:
-            new_account={
-                "name":username,
-                "posts":0,
-                "shortcodes":[],
-                "server_count": 0,
-                "server":[]
-                }
-            data["accounts"].append(new_account)
-            dumpx(data)
-            print(f"{pre}Account {username} has been added in records")
-            check_for_new_post(username=username)
-
+        if account["name"] == username:
+            logger.info(f"{pre_core} Account {username} already present in records")
+            return
+    new_account = {
+        "name": username,
+        "posts": 0,
+        "shortcodes": [],
+        "server_count": 0,
+        "server": []
+    }
+    data["accounts"].append(new_account)
+    dumpx(data)
+    logger.info(f"{pre_core} Account {username} has been added in records")
+    check_for_new_post(username=username)
 
 def update_server_count(username) -> bool:
-    data=loadx()
-    accounts=data["accounts"]
+    data = loadx()
+    accounts = data["accounts"]
     for account in accounts:
-        if account["name"]==username:
-            position=account_position(username=username)
-            count=len(account["server"][position])
-            account["server_count"]=count
-            datab=account["server_count"]
-            data=loadx()
-            data["accounts"][position]["server_count"]=count
+        if account["name"] == username:
+            position = account_position(username=username)
+            count = len(account["server"])
+            account["server_count"] = count
+            data["accounts"][position]["server_count"] = count
             dumpx(data=data)
             return True
-        else:
-            return False
-
-
+    return False
