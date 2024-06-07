@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 import os
 import asyncio
 import requests
@@ -8,17 +9,64 @@ from loguru import logger
 from colorama import Fore, Style, init
 
 
+
 init(autoreset=True)
 load_dotenv()
 TOKEN = os.getenv("KEY")
-
+VERIFIED_MEMBER_ID=os.getenv("MEMBER_ID")
 
 intents = discord.Intents.default()
 intents.message_content = True
-client = discord.Client(intents=intents)
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
 logger.add("bot.log", format="{time} {level} {message}", level="INFO")
+bot = commands.Bot(command_prefix="/",intents=intents)
 
+
+#COMMANDS
+
+@bot.command(name="adduser", description="add an IG username to get reels from ")
+async def adduser(ctx, username: str, member_id: int):
+    if member_id == YOUR_VERIFIED_MEMBER_ID:
+        await add_new_account(username)
+        await ctx.send(f"User {username} added successfully!")
+    else:
+        await ctx.send("Invalid member ID. You are not authorized to add users.")
+
+@bot.command(name="addchannel",description="add a channel along with its server's name")
+async def addchannel(ctx, username:str, server_name: str, channel_id: int, member_id: int):
+    try:
+        if member_id == YOUR_VERIFIED_MEMBER_ID:
+            try:
+                success = add_server(account_name=username, server_name=server_name, channel_id=channel_id)
+                if success==102:
+                    await ctx.send(f"{username} has been added in {channel_id} of {server_name}")
+                elif success==101:
+                    await ctx.send(f"{server_name} already exists in records by channel id {channel_id}")
+                elif success==103:
+                    await ctx.send(f"no account found named as {username} in records.[TIP:consider adding one]")
+                else:
+                    logger.warning(f"kuchh to scene ho gaya hai bhai!!!")
+                    await ctx.send(f"KUCHH TO HO GAYA HAI")
+                    await ctx.send(f"https://discord.com/channels/1246054708716769321/1246055019594121226/1248612026335498292")
+            except Exception as e:
+                raise Exception(f"Error adding server: {e}")
+        else:
+            await ctx.send("Entered member ID is wrong.")
+    except Exception as e:
+        raise Exception(f"Error: {e}")
+
+@bot.command(name="hlp", description="description of all commands")
+async def help(ctx,member_id:int):
+    try:
+
+        if member_id==VERIFIED_MEMBER_ID:
+            await ctx.send("/adduser <insta-username> <verification-id>")
+            await ctx.send("/addchannel <insta-username-i.e.-present-in-records> <name-of-the-server> <channel-id-of-the-server> <verification-id>")
+        else:
+            await ctx.send("please enter a correct verification ID")
+    except Exception as e:
+        await ctx.send(e)
+#EVENTS
 
 async def upload_video(channel_id: int, video_file: str) -> bool:
     try:
@@ -76,13 +124,15 @@ async def main():
         else:
             logger.info(f"{pre} No new post to check for account {account_name}")
 
-@client.event
+
+@bot.event
 async def on_ready():
-    logger.info(f"{pre} We have logged in as {client.user}")
+    logger.info(f"{pre} We have logged in as {bot.user}")
     await is_connected()
     while True:
         await main()
         logger.info(f"{pre} Waiting for 1 hour")
         await asyncio.sleep(3600)
 
-client.run(TOKEN)
+
+bot.run(TOKEN)
