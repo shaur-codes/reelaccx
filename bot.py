@@ -26,7 +26,7 @@ bot = commands.Bot(command_prefix="/",intents=intents)
 
 @bot.command(name="adduser", description="add an IG username to get reels from ")
 async def adduser(ctx, username: str, member_id: int):
-    if member_id == YOUR_VERIFIED_MEMBER_ID:
+    if member_id == VERIFIED_MEMBER_ID:
         await add_new_account(username)
         await ctx.send(f"User {username} added successfully!")
     else:
@@ -35,7 +35,7 @@ async def adduser(ctx, username: str, member_id: int):
 @bot.command(name="addchannel",description="add a channel along with its server's name")
 async def addchannel(ctx, username:str, server_name: str, channel_id: int, member_id: int):
     try:
-        if member_id == YOUR_VERIFIED_MEMBER_ID:
+        if member_id == VERIFIED_MEMBER_ID:
             try:
                 success = add_server(account_name=username, server_name=server_name, channel_id=channel_id)
                 if success==102:
