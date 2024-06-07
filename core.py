@@ -60,7 +60,7 @@ def get_latest_post(username):
     logger.error(f"{pre_core} Error: account {username} not found in the records")
     return False
 
-async def update_account_records(query):
+async def update_account_records(query): #updates threshold
     try:
         data = loadx()
         freq = len(data["accounts"])
@@ -135,7 +135,20 @@ async def check_for_new_post(username) -> bool:
         logger.info(f"{pre_core} New post for {username} NOT FOUND")
         return False
 
-def add_new_account(username):
+def update_server_count(username) -> bool:
+    data = loadx()
+    accounts = data["accounts"]
+    for account in accounts:
+        if account["name"] == username:
+            position = account_position(username=username)
+            count = len(account["server"])
+            account["server_count"] = count
+            data["accounts"][position]["server_count"] = count
+            dumpx(data=data)
+            return True
+    return False
+
+async def add_new_account(username):
     data = loadx()
     accounts = data["accounts"]
     for account in accounts:
@@ -152,17 +165,23 @@ def add_new_account(username):
     data["accounts"].append(new_account)
     dumpx(data)
     logger.info(f"{pre_core} Account {username} has been added in records")
-    check_for_new_post(username=username)
+    await update_account_records(query='update')
+    await update_server_count(username)
 
-def update_server_count(username) -> bool:
+def add_server(account_name, server_name, channel_id) -> int:
     data = loadx()
     accounts = data["accounts"]
     for account in accounts:
-        if account["name"] == username:
-            position = account_position(username=username)
-            count = len(account["server"])
-            account["server_count"] = count
-            data["accounts"][position]["server_count"] = count
-            dumpx(data=data)
-            return True
-    return False
+        if account["name"] == account_name:
+            for server in account["server"]:
+                if server["channel"] == channel_id:
+                    logger.error(f"{server} already present by channel id {channel_id}")
+                    return 101
+            account["server"].append({"name": server_name, "channel": channel_id})
+            dumpx(data)
+            update_server_count(account)
+            logger.success(f"added {server_name} for {account_name}")
+            return 102
+    logger.error(f"no account found named as {account_name}")
+    return 103
+
