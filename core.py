@@ -7,16 +7,34 @@ from dotenv import load_dotenv
 import os
 
 
-load_dotenv()
-USER=os.getenv("USER")
-PASS=os.getenv("PASS")
-init(autoreset=True)
-L = instaloader.Instaloader(max_connection_attempts=10, request_timeout=300)
-L.login(USER,PASS)
+
 pre_bot = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
 pre_core = f"{Fore.BLUE}[bot.CORE]{Style.RESET_ALL}"
 query = None
 logger.add("bot_core.log", format="{time} {level} {message}", level="INFO")
+load_dotenv()
+USER,USERB=os.getenv("USER"),os.getenv("USERB")
+PASS,PASSB=os.getenv("PASS"),os.getenv("PASSB")
+init(autoreset=True)
+L = instaloader.Instaloader(max_connection_attempts=10, request_timeout=300)
+
+def failsafe():
+    try:
+        L.login(USER,PASS)
+        logger.success("Logged in")
+        return 104                                           #LOGGED IN without any problem
+    except Exception as e:
+        logger.warning(f"Activating Fail-Safe {e}")
+        try:
+            L.login(USERB,PASSB)
+            logger.success("Logged in [Fail-Safe has been activated]")
+            return 105                                      #logged in using sencond token (Report this message on development server)
+        except Exception as e:
+            logger.critical(f"BROKEN FAIL-SAFE!!! {e}")
+            return 106                                      # fail-safe not working (immidiately report this on development server)
+        
+failsafe()
+
 
 def loadx():
     try:
@@ -162,7 +180,6 @@ async def check_for_new_post(username) -> bool:
     except Exception as e:
         logger.error(e)
         return False
-
 
 def update_server_count(username) -> bool:
     try:
