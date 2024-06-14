@@ -136,8 +136,9 @@ async def main_loop():
     while True:
         try:
             await main()
-            logger.info(f"{pre} Waiting for 1 hour")
-            await asyncio.sleep(3600)
+            time=3600*1
+            logger.info(f"{pre} Waiting for {time/3600} hour(s)")
+            await asyncio.sleep(time)
         except Exception as e:
             logger.error(f"{pre} Error in main loop: {e}")
             await asyncio.sleep(60) 
