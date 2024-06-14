@@ -15,6 +15,7 @@ logger.add("bot_core.log", format="{time} {level} {message}", level="INFO")
 load_dotenv()
 USER,USERB=os.getenv("USER"),os.getenv("USERB")
 PASS,PASSB=os.getenv("PASS"),os.getenv("PASSB")
+CHOVERFLOW=os.getenv("CHOVERFLOW") #Channel Id of the channel where all of the content will be uploaded
 init(autoreset=True)
 L = instaloader.Instaloader(max_connection_attempts=10, request_timeout=300)
 
@@ -24,7 +25,7 @@ def failsafe():
         logger.success("Logged in")
         return 104                                           #LOGGED IN without any problem
     except Exception as e:
-        logger.warning(f"Activating Fail-Safe {e}")
+        logger.warning(f"Activating Fail-Safe, {e}")
         try:
             L.login(USERB,PASSB)
             logger.success("Logged in [Fail-Safe has been activated]")
@@ -53,7 +54,6 @@ def dumpx(data):
 
 async def update_shortcodes(username):
     try:
-
         logger.info(f"{pre_core} Updating shortcodes for {username}")
         global shortcodes
         profile = instaloader.Profile.from_username(L.context, username)
@@ -216,7 +216,10 @@ async def add_new_account(username):
         dumpx(data)
         logger.info(f"{pre_core} Account {username} has been added in records")
         await update_account_records(query='update')
+        await update_shortcodes(username=username)
+        add_server(account_name=username,server_name='Reelaccx',channel_id=CHOVERFLOW)
         await update_server_count(username)
+
     except Exception as e:
         logger.error(e)
 
@@ -232,7 +235,7 @@ def add_server(account_name, server_name, channel_id) -> int:
                         return 101
                 account["server"].append({"name": server_name, "channel": channel_id})
                 dumpx(data)
-                update_server_count(account)
+                update_server_count(account) 
                 logger.success(f"added {server_name} for {account_name}")
                 return 102
         logger.error(f"no account found named as {account_name}")
