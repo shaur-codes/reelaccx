@@ -41,7 +41,7 @@ def failsafe():
         logger.critical(f"BROKEN FAIL-SAFE!!! {e}")
         return 106                                      # fail-safe not working (immidiately report this on development server)
 
-failsafe()
+
 
 
 def loadx():
@@ -59,7 +59,7 @@ def dumpx(data):
     except Exception as e:
         logger.error(f"{pre_core} [dumpx()] {e}")
 
-async def update_shortcodes(username):
+def update_shortcodes(username):
     try:
         logger.info(f"{pre_core} Updating shortcodes for {username}")
         global shortcodes
@@ -68,22 +68,41 @@ async def update_shortcodes(username):
         shortcodes = [post.shortcode for post in posts]
         data = loadx()
         accounts = data["accounts"]
-        user_found = False  
+        user_found = False
         for account in accounts:
             if account["name"] == username:
                 account['shortcodes'] = shortcodes
                 user_found = True
-                break  
+                break
+        
         if user_found:
+            # Save updated data
             dumpx(data=data)
             logger.info(f'{pre_core} Account {username} has been updated.')
             return len(shortcodes)
         else:
             logger.error(f'{pre_core} Error: Account {username} not found.')
             return False
+    except instaloader.exceptions.ProfileNotExistsException:
+        logger.error(f'{pre_core} Error: Profile {username} does not exist.')
+        return False
+    except instaloader.exceptions.ConnectionException as e:
+        logger.error(f'{pre_core} Connection error: {e}')
+        return False
+    except instaloader.exceptions.BadResponseException as e:
+        logger.error(f'{pre_core} Bad response from server: {e}')
+        return False
+    except instaloader.exceptions.TooManyRequestsException as e:
+        logger.error(f'{pre_core} Too many requests: {e}')
+        return False
+    except instaloader.exceptions.QueryReturnedNotFoundException as e:
+        logger.error(f'{pre_core} Query returned not found: {e}')
+        return False
     except Exception as e:
-        logger.error(e)
-       
+        logger.error(f'{pre_core} Unexpected error: {e}')
+        return False
+
+
 def get_latest_post(username):
     try:
         data = loadx()
@@ -169,7 +188,7 @@ async def check_for_new_post(username) -> bool:
             await update_account_records(query='update')
             return False
 
-        new_data = await update_shortcodes(username=username)
+        new_data = update_shortcodes(username=username)
 
         # Ensure old_data and new_data are not None
         if old_data is None or new_data is None:
