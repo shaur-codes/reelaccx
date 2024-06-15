@@ -4,7 +4,7 @@ from json import load, dump
 from loguru import logger
 from colorama import Fore, Style, init
 from dotenv import load_dotenv
-import os
+import os,time
 
 
 
@@ -20,20 +20,27 @@ init(autoreset=True)
 L = instaloader.Instaloader(max_connection_attempts=10, request_timeout=300)
 
 def failsafe():
-    try:
-        L.login(USER,PASS)
-        logger.success("Logged in")
-        return 104                                           #LOGGED IN without any problem
-    except Exception as e:
-        logger.warning(f"Activating Fail-Safe, {e}")
+    for _ in range(3): 
         try:
-            L.login(USERB,PASSB)
-            logger.success("Logged in [Fail-Safe has been activated]")
-            return 105                                      #logged in using sencond token (Report this message on development server)
+            L.login(USER, PASS)
+            logger.success("Logged in")
+            return 104
         except Exception as e:
-            logger.critical(f"BROKEN FAIL-SAFE!!! {e}")
-            return 106                                      # fail-safe not working (immidiately report this on development server)
-        
+            if isinstance(e, instaloader.exceptions.LoginRequiredException):
+                logger.warning(f"Login failed: {e}")
+                time.sleep(5) 
+            else:
+                logger.info(f"{pre_core} The Exception is not Login-Required-Exception, retrying...")
+                time.sleep(3)
+    
+    try:
+        L.login(USERB,PASSB)
+        logger.success("Logged in [Fail-Safe was Activated]")
+        return 105                                      #logged in using sencond token (Report this message on development server)
+    except Exception as e:
+        logger.critical(f"BROKEN FAIL-SAFE!!! {e}")
+        return 106                                      # fail-safe not working (immidiately report this on development server)
+
 failsafe()
 
 
