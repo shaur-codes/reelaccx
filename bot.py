@@ -82,8 +82,37 @@ async def upload_video(channel_id: int, video_file: str) -> bool:
         logger.error(f"{pre} Error uploading video: {e}")
         return False
 
+async def dump_pending(username,channel,filename):
+    data = loadx()
+    data["pending"].append({
+        "account_name": username,
+        "channels": channel,
+        "pending_shortcodes": [filename.replace(".mp4", "")]
+    })
+    dumpx(data)
+
+async def retry_pending_uploads(): #posts that were not downloaded for some reason and therefore not uploaded
+    logger.info(f"{pre_bot} retrying to upload pending files")
+    data = loadx()
+    for pending in data["pending"]:
+        account_name = pending["username"]
+        channels = pending["channels"]
+        for shortcode in pending["pending_shortcodes"]:
+            post_url = await get_post_url(shortcode)
+            file = f"{shortcode}.mp4"
+            dp = await dump_post(url=post_url, filename=file, account_name=account_name, channels=channels)
+            if dp:
+                for channel in channels:
+                    load_video = await upload_video(channel_id=channel, video_file=file)
+                    if load_video:
+                        logger.info(f"{pre} Upload has been successful for {channel}")
+                logger.info(f"{pre} Deleting file {file}")
+                os.remove(file)
+                pending["pending_shortcodes"].remove(shortcode)
+    dumpx(data)
+
 async def is_connected():
-    url = 'https://google.com'
+    url = 'https://discord.com'
     logger.info(f"{pre} Checking the connectivity of internet...")
     try:
         async with aiohttp.ClientSession() as session:
@@ -120,7 +149,8 @@ async def main():
                     logger.info(f"{pre} Deleting file {file}")
                     os.remove(file)
                 else:
-                    logger.error(f"{pre} Error in -> dump_post ~ false")
+                    logger.warning(f"{pre} Error in -> dump_post ~ false")
+                    dump_pending(username=account_name,channel=channel,filename=file)
             else:
                 logger.info(f"{pre} No new post found for account {account_name}")
         else:
@@ -129,16 +159,15 @@ async def main():
 @bot.event
 async def on_ready():
     logger.info(f"{pre} We have logged in as {bot.user}")
-    await is_connected()
     bot.loop.create_task(main_loop())
 
 async def main_loop():
     while True:
         try:
+            await is_connected()
             await main()
-            time=3600*1
-            logger.info(f"{pre} Waiting for {time/3600} hour(s)")
-            await asyncio.sleep(time)
+            logger.info(f"{pre} Waiting for 1 hour")
+            await asyncio.sleep(30)
         except Exception as e:
             logger.error(f"{pre} Error in main loop: {e}")
             await asyncio.sleep(60) 
