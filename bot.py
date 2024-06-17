@@ -5,7 +5,8 @@ from async_timeout import timeout
 import asyncio
 from dotenv import load_dotenv
 from core import *
-from loguru import logger
+import logging
+import logging.handlers
 from colorama import Fore, Style, init
 from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -17,13 +18,26 @@ VERIFIED_MEMBER_ID = os.getenv("MEMBER_ID")
 intents = discord.Intents.default()
 intents.message_content = True
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
-logger.add("bot.log", format="{time} {level} {message}", level="INFO")
+#logger.add("bot.log", format="{time} {level} {message}", level="INFO")
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+logging.getLogger('discord.http').setLevel(logging.INFO)
+handler = logging.handlers.RotatingFileHandler(
+    filename='discord.log',
+    encoding='utf-8',
+    maxBytes=32 * 1024 * 1024,  # 32 MiB
+    backupCount=5,  # Rotate through 5 files
+)
+dt_fmt = '%Y-%m-%d %H:%M:%S'
+formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 bot = commands.AutoShardedBot(command_prefix="/", intents=intents)
 
 
 async def send_message(channel_id, message):
     await bot.wait_until_ready()
-    channel = bot.get_channel(channel_id)
+    channel = bot.fetch_channel(channel_id)
     if channel:
         await channel.send(message)
     else:
@@ -119,21 +133,27 @@ def backend_task():
 async def frontend_task():
   #  loop = asyncio.get_event_loop()
   #  await loop.run_in_executor(None, backend_task)
-    data=loadx()
+    data = loadx()
     for account in data["accounts"]:
+        files_to_remove = []  # List to keep track of files to remove
         for file in account["files"]:
             all_servers_uploaded = True
             for server in account["server"]:
                 channel = server["channel"]
-                if channel==None:
-                    pass
+                if channel is None:
+                    return 0
                 else:
                     await upload_video(bot, channel_id=channel, video_file=f'temp/{file}')
-            
+
             if all_servers_uploaded:
-                account["files"].remove(file)
+                files_to_remove.append(file)  # Add file to removal list
                 await asyncio.sleep(3)
-                rmfile(file)
+                await rmfile(file)
+
+        # Remove files outside of the loop
+        for file in files_to_remove:
+            account["files"].remove(file)
+            dumpx(data)
 
 async def combined_task():
     loop = asyncio.get_event_loop()
@@ -149,4 +169,4 @@ async def on_ready():
 
 check_and_create()
 failsafe(query='a')
-bot.run(TOKEN)
+bot.run(TOKEN,log_handler=None)
