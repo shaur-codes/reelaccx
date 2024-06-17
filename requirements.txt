@@ -1,0 +1,7 @@
+discord.py
+async-timeout
+python-dotenv
+apscheduler
+colorama
+instaloader
+requests
