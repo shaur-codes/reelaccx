@@ -1,5 +1,5 @@
 import instaloader
-import aiohttp
+import requests
 from json import load, dump
 from loguru import logger
 from colorama import Fore, Style, init
@@ -17,32 +17,72 @@ USER,USERB=os.getenv("USER"),os.getenv("USERB")
 PASS,PASSB=os.getenv("PASS"),os.getenv("PASSB")
 CHOVERFLOW=os.getenv("CHOVERFLOW") #Channel Id of the channel where all of the content will be uploaded
 init(autoreset=True)
-L = instaloader.Instaloader(max_connection_attempts=10, request_timeout=300)
+L = instaloader.Instaloader(max_connection_attempts=3, request_timeout=90)
+L.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0"
 
-def failsafe():
-    for _ in range(3): 
+
+def failsafe(query):
+    session_file = 'session.txt'
+    if query.lower()=="a":
         try:
-            L.login(USER, PASS)
-            logger.success("Logged in")
+            L.load_session_from_file(USER, session_file)
+            logger.success("Session loaded")
             return 104
-        except Exception as e:
-            if isinstance(e, instaloader.exceptions.LoginRequiredException):
-                logger.warning(f"Login failed: {e}")
-                time.sleep(5) 
-            else:
-                logger.info(f"{pre_core} The Exception is not Login-Required-Exception, retrying...")
-                time.sleep(3)
-    
-    try:
-        L.login(USERB,PASSB)
-        logger.success("Logged in [Fail-Safe was Activated]")
-        return 105                                      #logged in using sencond token (Report this message on development server)
-    except Exception as e:
-        logger.critical(f"BROKEN FAIL-SAFE!!! {e}")
-        return 106                                      # fail-safe not working (immidiately report this on development server)
-
-
-
+        except (instaloader.exceptions.BadCredentialsException, FileNotFoundError):
+            logger.warning("Loading session failed, trying to log in...")
+            for _ in range(3): 
+                try:
+                    L.login(USER, PASS)
+                    L.save_session_to_file(session_file)
+                    logger.success("Logged in and session saved")
+                    return 104
+                except Exception as e:
+                    if isinstance(e, instaloader.exceptions.LoginRequiredException):
+                        logger.warning(f"Login failed: {e}")
+                        time.sleep(5) 
+                    else:
+                        logger.info(f"{pre_core} The Exception is not Login-Required-Exception, retrying...")
+                        time.sleep(3)
+            
+            try:
+                L.login(USERB,PASSB)
+                L.save_session_to_file(session_file)  # Save the second account's session as well
+                logger.success("Logged in [Fail-Safe was Activated]")
+                return 105
+            except Exception as e:
+                logger.critical(f"BROKEN FAIL-SAFE!!! {e}")
+                return 106
+    elif query.lower()=="b":
+        try:
+            L.load_session_from_file(USERB, session_file)
+            logger.success("Session loaded")
+            return 104
+        except (instaloader.exceptions.BadCredentialsException, FileNotFoundError):
+            logger.warning("Loading session failed, trying to log in...")
+            for _ in range(3): 
+                try:
+                    L.login(USERB, PASSB)
+                    L.save_session_to_file(session_file)
+                    logger.success("Logged in and session saved")
+                    return 104
+                except Exception as e:
+                    if isinstance(e, instaloader.exceptions.LoginRequiredException):
+                        logger.warning(f"Login failed: {e}")
+                        time.sleep(5) 
+                    else:
+                        logger.info(f"{pre_core} The Exception is not Login-Required-Exception, retrying...")
+                        time.sleep(3)
+            
+            try:
+                L.login(USER,PASS)
+                L.save_session_to_file(session_file)  # Save the second account's session as well
+                logger.success("Logged in [Fail-Safe was Activated]")
+                return 105
+            except Exception as e:
+                logger.critical(f"BROKEN FAIL-SAFE!!! {e}")
+                return 106
+    else:
+        logger.warning(f"{pre_core} this query {query} is not acceptable!!!")
 
 def loadx():
     try:
@@ -85,23 +125,37 @@ def update_shortcodes(username):
             return False
     except instaloader.exceptions.ProfileNotExistsException:
         logger.error(f'{pre_core} Error: Profile {username} does not exist.')
-        return False
+        return 107
     except instaloader.exceptions.ConnectionException as e:
         logger.error(f'{pre_core} Connection error: {e}')
-        return False
+        return 108
     except instaloader.exceptions.BadResponseException as e:
         logger.error(f'{pre_core} Bad response from server: {e}')
-        return False
+        return 109
     except instaloader.exceptions.TooManyRequestsException as e:
         logger.error(f'{pre_core} Too many requests: {e}')
-        return False
+        return 110
     except instaloader.exceptions.QueryReturnedNotFoundException as e:
         logger.error(f'{pre_core} Query returned not found: {e}')
-        return False
+        return 111
+    except instaloader.exceptions.ConnectionException as e:
+        if e.response.status_code == 400:
+            logger.error(f"{pre_core} Caught a 400 Bad Request error!")
+        elif e.response.status_code == 401:
+            logger.error(f"{pre_core} Caught a 401 Unauthorized error!")
+        try:
+            logger.info(f"{pre_core} recreating a new session...")
+            rmfile('session.txt')
+            failsafe(query='b')
+            return 112
+        except Exception as f:
+            logger.error(f"{f}")
+            return 113
+
+        
     except Exception as e:
         logger.error(f'{pre_core} Unexpected error: {e}')
         return False
-
 
 def get_latest_post(username):
     try:
@@ -117,7 +171,7 @@ def get_latest_post(username):
     except Exception as e:
         logger.error(e)
 
-async def update_account_records(query): #updates threshold
+def update_account_records(query): #updates threshold
     try:
         data = loadx()
         freq = len(data["accounts"])
@@ -126,20 +180,21 @@ async def update_account_records(query): #updates threshold
             try:
                 updated_account_name = data["accounts"][freq-1]["name"]
                 data["thresh"] = freq
-                a = await update_shortcodes(username=updated_account_name) - 1
+                a = update_shortcodes(username=updated_account_name)
+                a=a-1
                 data["posts"] = a
                 logger.info(f"{pre_core} New user '{updated_account_name}' found")
                 dumpx(data=data)
                 logger.info(f"{pre_core} Updated threshold to {freq}")
             except Exception as e:
-                logger.error(f"{pre_core} [update_account()][0] {e}")
+                logger.error(f"{pre_core} [update_account_records()][0] {e}")
         else:
             if query == 'update':
                 logger.info(f"{pre_core} new account was not found.")
             else:
                 logger.info(f"{pre_core} Everything is up-to-date")
     except Exception as e:
-        logger.error(f"{pre_core} [update_account()][1] {e}")
+        logger.error(f"{pre_core} [update_account_records()][1] {e}")
 
 def account_position(username) -> int:
     try:
@@ -151,7 +206,7 @@ def account_position(username) -> int:
     except Exception as e:
         logger.error(e)
 
-async def get_post_url(shortcode) -> str:
+def get_post_url(shortcode) -> str:
     try:
         post = instaloader.Post.from_shortcode(L.context, shortcode=shortcode)
         if post.is_video:
@@ -161,23 +216,21 @@ async def get_post_url(shortcode) -> str:
     except Exception as e:
         logger.error(e)
 
-async def dump_post(url: str, filename: str) -> bool:
+def dump_post(url: str, filename: str) -> bool:
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    content = await response.read()
-                    with open(filename, "wb") as f:
-                        f.write(content)
-                    return True
-                else:
-                    logger.error(f"{pre_core} Error: Received status code {response.status}")
-                    return False
+        response = requests.get(url)
+        if response.status_code == 200:
+            with open(f"temp/{filename}", "wb") as f:
+                f.write(response.content)
+            return True
+        else:
+            logger.error(f"{pre_core} Error: Received status code {response.status_code}")
+            return False
     except Exception as e:
         logger.error(f"{pre_core} Error downloading file: {e}")
         return False
 
-async def check_for_new_post(username) -> bool:
+def check_for_new_post(username) -> bool:
     try:
         data = loadx()
         position = account_position(username=username)
@@ -185,7 +238,7 @@ async def check_for_new_post(username) -> bool:
             old_data = data["accounts"][position]["posts"]
         else:
             logger.error(f"{pre_core} Error: Account {username} not found. trying to update records...")
-            await update_account_records(query='update')
+            update_account_records(query='update')
             return False
 
         new_data = update_shortcodes(username=username)
@@ -194,7 +247,11 @@ async def check_for_new_post(username) -> bool:
         if old_data is None or new_data is None:
             logger.error(f"{pre_core} Error: old_data or new_data is None for account {username}")
             return False
-
+        error_codes=[107 or 108 or 109 or 110 or 111 or 112 or 113]
+        if new_data in error_codes:
+            return new_data
+        else:
+            pass
         if new_data > old_data:
             data["accounts"][position]["posts"] = new_data
             dumpx(data=data)
@@ -223,7 +280,7 @@ def update_server_count(username) -> bool:
     except Exception as e:
         logger.error(e)
 
-async def add_new_account(username):
+def add_new_account(username):
     try:
         data = loadx()
         accounts = data["accounts"]
@@ -234,6 +291,7 @@ async def add_new_account(username):
         new_account = {
             "name": username,
             "posts": 0,
+            "files":[],
             "shortcodes": [],
             "server_count": 0,
             "server": []
@@ -241,10 +299,10 @@ async def add_new_account(username):
         data["accounts"].append(new_account)
         dumpx(data)
         logger.info(f"{pre_core} Account {username} has been added in records")
-        await update_account_records(query='update')
-        await update_shortcodes(username=username)
-        add_server(account_name=username,server_name='Reelaccx',channel_id=CHOVERFLOW)
-        await update_server_count(username)
+        update_account_records(query='update')
+        update_shortcodes(username=username)
+        add_server(account_name=username,server_name='Reelaccx',channel_id=int(CHOVERFLOW))
+        update_server_count(username)
 
     except Exception as e:
         logger.error(e)
@@ -268,3 +326,53 @@ def add_server(account_name, server_name, channel_id) -> int:
         return 103
     except Exception as e:
         logger.error(e)
+
+def measure_time(func, *args, **kwargs):
+    start_time = time.time()
+    result = func(*args, **kwargs)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"Function '{func.__name__}' took {elapsed_time:.2f} seconds to complete.")
+    return result
+
+def update_file(username,file):
+    records=loadx()
+    for account in records["accounts"]:
+        if account["name"]==username:
+            account["files"].append(file)
+            break
+        else:
+            logger.error(f"{pre_core} {username} not found in records!!")
+    dumpx(records)
+
+def rmfile(filename):
+    try:
+        os.remove(f"temp/{filename}")
+    except Exception as e:
+        logger.error(f"{pre_core} {e}")
+
+def check_and_create():
+    if not os.path.exists('temp'):
+        os.makedirs('temp')
+    records_data = {
+        "thresh": 1,
+        "sleep_time": 3600,
+        "accounts": [
+            {
+                "name": "wtf_su2",
+                "posts": 0,
+                "shortcodes": ["C8TdzW7Rlve"],
+                "files": [],
+                "server_count": 1,
+                "server": [
+                    {
+                        "name": "Reelaccx",
+                        "channel": 1251090965398163486
+                    }
+                ]
+            }
+        ]
+    }
+    if not os.path.isfile('records.json'):
+        dumpx(records_data)
+
