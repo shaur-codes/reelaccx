@@ -15,6 +15,7 @@ init(autoreset=True)
 load_dotenv()
 TOKEN = os.getenv("KEY")
 VERIFIED_MEMBER_ID = os.getenv("MEMBER_ID")
+LOGCHANNEL=os.getenv("LOGCHANNEL")
 intents = discord.Intents.default()
 intents.message_content = True
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
@@ -110,6 +111,8 @@ def backend_task():
     logger.info("[check_new_posts] Starting check_new_posts")
     update_account_records(query=None)
     data = loadx()
+    if data is None:  # Check if data is loaded properly.
+        return
 
     for account in data["accounts"]:
         account_name = account["name"]
@@ -122,7 +125,7 @@ def backend_task():
                 file = f"{latest_post}.mp4"
                 dp = dump_post(url=post_url, filename=file)
                 if dp:
-                    update_file(username=account_name,file=file)
+                    update_file(username=account_name, file=file)
                 else:
                     logger.warning(f"Error in dump_post ~ false")
             else:
@@ -130,35 +133,45 @@ def backend_task():
         else:
             logger.info(f"No new post to check for account {account_name}")
 
-async def frontend_task():
-  #  loop = asyncio.get_event_loop()
-  #  await loop.run_in_executor(None, backend_task)
+async def frontend_task(bot):
     data = loadx()
+    if data is None:  
+        return
+
     for account in data["accounts"]:
-        files_to_remove = []  # List to keep track of files to remove
+        files_to_remove = []
         for file in account["files"]:
             all_servers_uploaded = True
             for server in account["server"]:
-                channel = server["channel"]
-                if channel is None:
-                    return 0
+                channel_id = server["channel"]
+                if channel_id is None:
+                    all_servers_uploaded = False
+                    break  
                 else:
-                    await upload_video(bot, channel_id=channel, video_file=f'temp/{file}')
-
+                    upload_success = await upload_video(bot, channel_id=channel_id, video_file=f'temp/{file}')
+                    if not upload_success:
+                        all_servers_uploaded = False
+                        break  
+                    elif upload_success:
+                        await send_message(channel_id=LOGCHANNEL,message=f"task file-upload for {file} has been successful in {server["name"]}, channel_ID: {channel_id}")
+                    else:
+                        logger.warning(f"something unexpected happened while sending file:{file} in server:{server['name']}, channel_ID:{channel_id}")
+                        await send_message(channel_id=LOGCHANNEL,message=f"something unexpected happened while sending file:{file} in server:{server['name']}, channel_ID:{channel_id}")
             if all_servers_uploaded:
-                files_to_remove.append(file)  # Add file to removal list
-                await asyncio.sleep(3)
-                await rmfile(file)
+                files_to_remove.append(file)
 
-        # Remove files outside of the loop
         for file in files_to_remove:
             account["files"].remove(file)
-            dumpx(data)
+            await rmfile(file)
+
+        dumpx(data)  
 
 async def combined_task():
     loop = asyncio.get_event_loop()
+    logger.info("backend task")
     await loop.run_in_executor(None, backend_task)
-    await frontend_task()
+    logger.info("frontend task")
+    await frontend_task(bot=bot)
         
 @bot.event
 async def on_ready():
