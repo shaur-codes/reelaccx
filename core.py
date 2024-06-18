@@ -5,17 +5,18 @@ from loguru import logger
 from colorama import Fore, Style, init
 from dotenv import load_dotenv
 import os,time
-
+import asyncio
+import aiohttp
 
 
 pre_bot = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
 pre_core = f"{Fore.BLUE}[bot.CORE]{Style.RESET_ALL}"
 query = None
-logger.add("bot_core.log", format="{time} {level} {message}", level="INFO")
+logger.add("bot.log", format="{time} {level} {message}", level="WARNING")
 load_dotenv()
 USER,USERB=os.getenv("USER"),os.getenv("USERB")
 PASS,PASSB=os.getenv("PASS"),os.getenv("PASSB")
-CHOVERFLOW=os.getenv("CHOVERFLOW") #Channel Id of the channel where all of the content will be uploaded
+CHOVERFLOW=os.getenv("CHOVERFLOW") #Channel Id of the channel where all the content will be uploaded 
 init(autoreset=True)
 L = instaloader.Instaloader(max_connection_attempts=3, request_timeout=90)
 L.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0"
@@ -345,7 +346,7 @@ def update_file(username,file):
             logger.error(f"{pre_core} {username} not found in records!!")
     dumpx(records)
 
-def rmfile(filename):
+async def rmfile(filename):
     try:
         os.remove(f"temp/{filename}")
     except Exception as e:
@@ -376,3 +377,15 @@ def check_and_create():
     if not os.path.isfile('records.json'):
         dumpx(records_data)
 
+async def is_connected():
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get("https://discord.com") as response:
+                if response.status == 200:
+                    logger.info("We are up and running")
+                else:
+                    logger.error(f"Discord returned {response.status}")
+    except Exception as e:
+        logger.error(f"Couldn't connect to internet, retrying... Error: {e}")
+        await asyncio.sleep(5)
+        await is_connected()  
