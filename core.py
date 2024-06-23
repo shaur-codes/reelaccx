@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 import os,time
 import asyncio
 import aiohttp
+import subprocess
+import shutil
 
 
 pre_bot = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
@@ -391,3 +393,29 @@ async def is_connected():
         logger.error(f"Couldn't connect to internet, retrying... Error: {e}")
         await asyncio.sleep(5)
         await is_connected()  
+
+def get_cpu_temperature():
+    try:
+        temp_str = os.popen("vcgencmd measure_temp").readline()
+        temp_celsius = float(temp_str.replace("temp=", "").replace("'C\n", ""))
+        return temp_celsius
+    except Exception as e:
+        return e
+    
+def get_server_uptime():
+    try:
+        uptime_str = subprocess.check_output(["uptime"]).decode("utf-8")
+        uptime = uptime_str.split(",")[0].split("up ")[1]
+        return uptime.strip()
+    except Exception as e:
+        return e
+
+def get_available_storage():
+    try:
+        total, used, free = shutil.disk_usage("/")
+        total=total//(2**30)
+        used=used//(2**30)
+        free=free//(2**30)
+        return total,used,free
+    except Exception as e:
+        return e
