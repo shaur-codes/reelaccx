@@ -16,7 +16,7 @@ logger.add("bot.log", format="{time} {level} {message}", level="WARNING")
 load_dotenv()
 USER,USERB=os.getenv("USER"),os.getenv("USERB")
 PASS,PASSB=os.getenv("PASS"),os.getenv("PASSB")
-CHOVERFLOW=os.getenv("CHOVERFLOW") #Channel Id of the channel where all the content will be uploaded 
+CHOVERFLOW=os.getenv("CHOVERFLOW") #Channel Id of the channel where all of the content will be uploaded
 init(autoreset=True)
 L = instaloader.Instaloader(max_connection_attempts=3, request_timeout=90)
 L.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:127.0) Gecko/20100101 Firefox/127.0"
@@ -165,12 +165,14 @@ def get_latest_post(username):
         for account in accounts:
             if account["name"] == username:
                 post = account['shortcodes']
-                latest_post = post[0]
+                latest_post = post[3]  # trying to prevent getting the pinned posts always as latest post.
                 return latest_post
+        
         logger.error(f"{pre_core} Error: account {username} not found in the records")
         return False
     except Exception as e:
         logger.error(e)
+        return False 
 
 def update_account_records(query): #updates threshold
     try:
