@@ -45,6 +45,39 @@ async def send_message(channel_id, message):
         print(f"Could not find channel with ID: {channel_id}")
 
 # Commands
+@bot.command(name="temprature",description="return the temprature of the server",category="server configuration")
+async def temprature(ctx):
+    try:
+        await ctx.send("recieving info...")
+        temprature=get_cpu_temperature()
+        await ctx.send(f"{temprature} *C")
+        logger.info(f" get_cpu_temprature was called, returned -> {temprature} *C")
+    except Exception as e:
+        logger.warning(f"{pre} {e}")
+        await ctx.send(e)
+
+@bot.commmand(name="uptime",description="return the uptime of the server",category="server configuration")
+async def uptime(ctx):
+    try:
+        await ctx.send("recieving info...")
+        uptime = get_server_uptime()
+        await ctx.send(f"{uptime}")
+        logger.info(f"{pre} get_server_uptime() was called, returned -> {uptime}")
+    except Exception as e:
+        logger.warning(f"{pre} {e}")
+        await ctx.send(e)
+
+@bot.command(name="storage",description="get storage info",category="server configuration")
+async def storage(ctx):
+    try:
+        await ctx.send("recieving info...")
+        total,used,free=get_available_storage()
+        await ctx.send(f"total={total} GB, used={used} GB, free={free} GB")
+        logger.info(f"{pre} get_available_storage was called, returned -> free={free},total={total},used={used}")
+    except Exception as e:
+        logger.warning(f"{pre} {e}")
+        await ctx.send(e)
+
 @bot.command(name="adduser", description="Add an IG username to get reels from")
 async def adduser(ctx, username: str, member_id: str):
     try:
@@ -110,6 +143,7 @@ async def upload_video(bot, channel_id, video_file):
 def backend_task():
     logger.info("[check_new_posts] Starting check_new_posts")
     update_account_records(query=None)
+    update_server_count()
     data = loadx()
     if data is None:  # Check if data is loaded properly.
         return
@@ -168,18 +202,18 @@ async def frontend_task(bot):
 
 async def combined_task():
     loop = asyncio.get_event_loop()
-    logger.info("backend task")
+    logger.info(f"{pre} Initiating backend task")
     await loop.run_in_executor(None, backend_task)
-    logger.info("frontend task")
+    logger.info(f"{pre} Initiatingfrontend task")
     await frontend_task(bot=bot)
         
 @bot.event
 async def on_ready():
-    print(f'We have logged in as {bot.user}')
+    logger.info(f'We have logged in as {bot.user}')
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(combined_task, 'interval', hours=3,next_run_time=datetime.now())
+    scheduler.add_job(combined_task, 'interval', hours=4,next_run_time=datetime.now())
     scheduler.start()
 
 check_and_create()
 failsafe(query='a')
-bot.run(TOKEN,log_handler=None)
+bot.run(TOKEN)
