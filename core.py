@@ -201,7 +201,7 @@ def update_account_records(query): #updates threshold
     except Exception as e:
         logger.error(f"{pre_core} [update_account_records()][1] {e}")
 
-def account_position(username) -> int:
+def account_position(username) -> int: #returns the position of account in records
     try:
         accounts = loadx()["accounts"]
         for i, account in enumerate(accounts):
@@ -211,7 +211,7 @@ def account_position(username) -> int:
     except Exception as e:
         logger.error(e)
 
-def get_post_url(shortcode) -> str:
+def get_post_url(shortcode) -> str: #returns the url of the post 
     try:
         post = instaloader.Post.from_shortcode(L.context, shortcode=shortcode)
         if post.is_video:
@@ -221,7 +221,7 @@ def get_post_url(shortcode) -> str:
     except Exception as e:
         logger.error(e)
 
-def dump_post(url: str, filename: str) -> bool:
+def dump_post(url: str, filename: str) -> bool: #downloads the post from a provided url as filename
     try:
         response = requests.get(url)
         if response.status_code == 200:
@@ -235,7 +235,7 @@ def dump_post(url: str, filename: str) -> bool:
         logger.error(f"{pre_core} Error downloading file: {e}")
         return False
 
-def check_for_new_post(username) -> bool:
+def check_for_new_post(username) -> bool: #checks if there is a new post from an account
     try:
         data = loadx()
         position = account_position(username=username)
@@ -269,7 +269,7 @@ def check_for_new_post(username) -> bool:
         logger.error(e)
         return False
 
-def update_server_count(username) -> bool:
+def update_server_count(username) -> bool: #updates the number of servers present in an account
     try:
         data = loadx()
         accounts = data["accounts"]
@@ -285,7 +285,7 @@ def update_server_count(username) -> bool:
     except Exception as e:
         logger.error(e)
 
-def add_new_account(username):
+def add_new_account(username): #adds a new account
     try:
         data = loadx()
         accounts = data["accounts"]
@@ -308,6 +308,7 @@ def add_new_account(username):
         update_shortcodes(username=username)
         add_server(account_name=username,server_name='Reelaccx',channel_id=int(CHOVERFLOW))
         update_server_count(username)
+        return True
 
     except Exception as e:
         logger.error(e)
@@ -396,10 +397,12 @@ async def is_connected():
 
 def get_cpu_temperature():
     try:
+        logger.info(f"{pre_core} retrieving CPU temprature")
         temp_str = os.popen("vcgencmd measure_temp").readline()
         temp_celsius = float(temp_str.replace("temp=", "").replace("'C\n", ""))
         return temp_celsius
     except Exception as e:
+        logger.warning(f"{pre_core} get_cpu_temprature -> {e}")
         return e
     
 def get_server_uptime():
@@ -408,6 +411,7 @@ def get_server_uptime():
         uptime = uptime_str.split(",")[0].split("up ")[1]
         return uptime.strip()
     except Exception as e:
+        logger.warning(f"{pre_core} get_server_uptime() -> {e}")
         return e
 
 def get_available_storage():
@@ -418,4 +422,37 @@ def get_available_storage():
         free=free//(2**30)
         return total,used,free
     except Exception as e:
+        logger.warning(f"{pre_core} get_available_storage() -> {e}")
         return e
+
+def remove_account(username):
+    try:
+        data = loadx()
+        accounts = data["accounts"]
+        for account in accounts:
+            if account["name"] == username:
+                accounts.remove(account)
+                dumpx(data)
+                logger.info(f"{pre_core} Account {username} has been removed from records")
+                return True
+        logger.info(f"{pre_core} Account {username} not found in records")
+    except Exception as e:
+        logger.error(e)
+
+def remove_server(account_name, server_name, channel_id) -> bool:
+    try:
+        data = loadx()
+        accounts = data["accounts"]
+        for account in accounts:
+            if account["name"] == account_name:
+                for server in account["server"]:
+                    if server["channel"] == channel_id:
+                        account["server"].remove(server)
+                        dumpx(data)
+                        logger.info(f"Removed {server_name} for {account_name}")
+                        return True
+        logger.info(f"No matching record found for server {server_name} and channel {channel_id}")
+        return False
+    except Exception as e:
+        logger.error(e)
+
