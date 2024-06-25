@@ -84,10 +84,36 @@ async def adduser(ctx, username: str, member_id: str):
 
         if member_id == VERIFIED_MEMBER_ID:
             await ctx.send(f"trying to add {username} in records")
-            await add_new_account(username)
-            await ctx.send(f"User {username} added successfully!")
+            try:
+                success=add_new_account(username)
+                if success:
+                    await ctx.send(f"User {username} added successfully!")
+                    logger.info(f"User {username} added successfully!")
+            except Exception as e:
+                await ctx.send(f"{e}")
+                logger.warning(f"{pre} {e}")
         else:
             await ctx.send("Invalid member ID. You are not authorized to add users.")
+    except Exception as e:
+        logger.warning(f"{pre_bot} {e}")
+        await ctx.send(e)
+
+@bot.command(name="rmuser", description="Remove an IG username from the records")
+async def removeuser(ctx, username: str, member_id: str):
+    try:
+        if member_id == VERIFIED_MEMBER_ID:
+            await ctx.send(f"Trying to remove {username} from records")
+            try:
+                success = await remove_account(username)
+                if success:
+                    await ctx.send(f"User {username} removed successfully!")
+                else:
+                    await ctx.send(f"User {username} was not removed (see logs for more info)")
+            except Exception as e:
+                await ctx.send("there was an unexpected error (see logs for more info)")
+                logger.warning(f"{pre} {e}")
+        else:
+            await ctx.send("Invalid member ID. You are not authorized to remove users.")
     except Exception as e:
         logger.warning(f"{pre_bot} {e}")
         await ctx.send(e)
@@ -100,7 +126,7 @@ async def addchannel(ctx, username: str, server_name: str, channel_id: int, memb
             if success == 102:
                 await ctx.send(f"account {username} has been added in channel {channel_id} of server {server_name}")
                 try:
-                    await send_message(channel_id=channel_id,message=f'Congrats {server_name}!! this Channel is now added in Our records. ')
+                    await send_message(channel_id=channel_id,message=f'Congrats {server_name}!! We have added {username}. ')
                 except Exception as e:
                     logger.warning(f"{pre_bot} {e}")
             elif success == 101:
@@ -116,6 +142,21 @@ async def addchannel(ctx, username: str, server_name: str, channel_id: int, memb
         logger.warning(f"{pre_bot} {e}")
         await ctx.send(e)
 
+@bot.command(name="removechannel", description="Remove a channel from the records")
+async def removechannel(ctx, username: str, server_name: str, channel_id: int, member_id: str):
+    try:
+        if member_id == VERIFIED_MEMBER_ID:
+            success = remove_server(account_name=username, server_name=server_name, channel_id=channel_id)
+            if success:
+                await ctx.send(f"Channel {channel_id} of server {server_name} removed for account {username}")
+            else:
+                await ctx.send(f"No matching record found for server {server_name} and channel {channel_id}")
+        else:
+            await ctx.send("Entered member ID is wrong.")
+    except Exception as e:
+        logger.warning(f"{pre_bot} {e}")
+        await ctx.send(e)
+
 @bot.command(name="hlp", description="Description of all commands")
 async def help(ctx, member_id: str):
     if member_id == VERIFIED_MEMBER_ID:
@@ -124,13 +165,44 @@ async def help(ctx, member_id: str):
     else:
         await ctx.send("Please enter a correct verification ID")
 
+@bot.command(name="sendnotice", description="Send notice to all servers")
+async def sendnotice(ctx,notice:str):
+    try:
+        data = loadx()
+        if data is None:
+            await ctx.send("Error: Unable to load data from records.json")
+            return
+
+        for account in data["accounts"]:
+            for server in account["server"]:
+                channel_id = server["channel"]
+                name=server['name']
+                try:
+                    channel = await bot.fetch_channel(channel_id)
+                    if channel:
+                        await channel.send(notice)
+                        await ctx.send(f"Notice sent to server {name} (Channel ID: {channel_id})")
+                        logger.info(f"Notice sent to server {name} (Channel ID: {channel_id})")
+                    else:
+                        await ctx.send(f"Channel with ID {channel_id} not found.")
+                        logger.warning(f"Channel with ID {channel_id} not found.")
+                except Exception as e:
+                    await ctx.send(f"Error sending notice to server {name}: {e}")
+                    logger.warning(f"Error sending notice to server {name}: {e}")
+    except Exception as e:
+        await ctx.send(f"Error: {e}")
+        logger.warning(f"{pre} {e}")
+
 async def upload_video(bot, channel_id, video_file):
     channel = await bot.fetch_channel(channel_id)
     try:
 
         if channel:
-            await channel.send(file=discord.File(video_file))
-            logger.success(f"{pre_bot} upload has been successfule for {video_file}")
+            message=await channel.send(file=discord.File(video_file))
+            await message.add_reaction("👍")
+            await message.add_reaction("🌟")
+            await message.add_reaction("💀")
+            logger.success(f"{pre_bot} upload has been successfull for {video_file} in Channel ID: {channel_id}")
             return True
         else:
             logger.warning(f"{pre_bot} channel {channel} not found in records!!")
