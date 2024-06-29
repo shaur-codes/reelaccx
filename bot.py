@@ -10,6 +10,8 @@ import logging.handlers
 from colorama import Fore, Style, init
 from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+
 # Initialize environment and bot settings
 init(autoreset=True)
 load_dotenv()
@@ -19,20 +21,7 @@ LOGCHANNEL=os.getenv("LOGCHANNEL")
 intents = discord.Intents.default()
 intents.message_content = True
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
-#logger.add("bot.log", format="{time} {level} {message}", level="INFO")
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-logging.getLogger('discord.http').setLevel(logging.INFO)
-handler = logging.handlers.RotatingFileHandler(
-    filename='discord.log',
-    encoding='utf-8',
-    maxBytes=32 * 1024 * 1024,  # 32 MiB
-    backupCount=5,  # Rotate through 5 files
-)
-dt_fmt = '%Y-%m-%d %H:%M:%S'
-formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.add("bot.log", format="{time} {level} {message}", level="INFO")
 bot = commands.AutoShardedBot(command_prefix="/", intents=intents)
 
 
@@ -45,6 +34,59 @@ async def send_message(channel_id, message):
         print(f"Could not find channel with ID: {channel_id}")
 
 # Commands
+@bot.command(name="temprature",description="return the temprature of the server",category="server configuration")
+async def temprature(ctx):
+    try:
+        await ctx.send("recieving info...")
+        temprature=get_cpu_temperature()
+        await ctx.send(f"{temprature} *C")
+        logger.info(f" get_cpu_temprature was called, returned -> {temprature} *C")
+    except Exception as e:
+        logger.warning(f"{pre} {e}")
+        await ctx.send(e)
+
+@bot.commmand(name="uptime",description="return the uptime of the server",category="server configuration")
+async def uptime(ctx):
+    try:
+        await ctx.send("recieving info...")
+        uptime = get_server_uptime()
+        await ctx.send(f"{uptime}")
+        logger.info(f"{pre} get_server_uptime() was called, returned -> {uptime}")
+    except Exception as e:
+        logger.warning(f"{pre} {e}")
+        await ctx.send(e)
+
+@bot.command(name="storage",description="get storage info",category="server configuration")
+async def storage(ctx):
+    try:
+        await ctx.send("recieving info...")
+        total,used,free=get_available_storage()
+        await ctx.send(f"total={total} GB, used={used} GB, free={free} GB")
+        logger.info(f"{pre} get_available_storage was called, returned -> free={free},total={total},used={used}")
+    except Exception as e:
+        logger.warning(f"{pre} {e}")
+        await ctx.send(e)
+        
+@bot.command(name="rmuser", description="Remove an IG username from the records")
+async def removeuser(ctx, username: str, member_id: str):
+    try:
+        if member_id == VERIFIED_MEMBER_ID:
+            await ctx.send(f"Trying to remove {username} from records")
+            try:
+                success = await remove_account(username)
+                if success:
+                    await ctx.send(f"User {username} removed successfully!")
+                else:
+                    await ctx.send(f"User {username} was not removed (see logs for more info)")
+            except Exception as e:
+                await ctx.send("there was an unexpected error (see logs for more info)")
+                logger.warning(f"{pre} {e}")
+        else:
+            await ctx.send("Invalid member ID. You are not authorized to remove users.")
+    except Exception as e:
+        logger.warning(f"{pre_bot} {e}")
+        await ctx.send(e)
+
 @bot.command(name="adduser", description="Add an IG username to get reels from")
 async def adduser(ctx, username: str, member_id: str):
     try:
@@ -82,6 +124,21 @@ async def addchannel(ctx, username: str, server_name: str, channel_id: int, memb
     except Exception as e:
         logger.warning(f"{pre_bot} {e}")
         await ctx.send(e)
+        
+@bot.command(name="rmchannel", description="Remove a channel from the records")
+async def removechannel(ctx, username: str, server_name: str, channel_id: int, member_id: str):
+    try:
+        if member_id == VERIFIED_MEMBER_ID:
+            success = remove_server(account_name=username, server_name=server_name, channel_id=channel_id)
+            if success:
+                await ctx.send(f"Channel {channel_id} of server {server_name} removed for account {username}")
+            else:
+                await ctx.send(f"No matching record found for server {server_name} and channel {channel_id}")
+        else:
+            await ctx.send("Entered member ID is wrong.")
+    except Exception as e:
+        logger.warning(f"{pre_bot} {e}")
+        await ctx.send(e)
 
 @bot.command(name="hlp", description="Description of all commands")
 async def help(ctx, member_id: str):
@@ -96,8 +153,11 @@ async def upload_video(bot, channel_id, video_file):
     try:
 
         if channel:
-            await channel.send(file=discord.File(video_file))
-            logger.success(f"{pre_bot} upload has been successfule for {video_file}")
+            message=await channel.send(file=discord.File(video_file))
+            await message.add_reaction("💀")
+            await message.add_reaction("👍")
+            await message.add_reaction("🌟")
+            logger.success(f"{pre_bot} upload has been successfull for {video_file} in Channel ID: {channel_id}")
             return True
         else:
             logger.warning(f"{pre_bot} channel {channel} not found in records!!")
@@ -106,6 +166,7 @@ async def upload_video(bot, channel_id, video_file):
         logger.error(f"{pre_bot} {f}")
     except Exception as e:
         logger.error(f"{pre_bot} {e}")
+
 
 def backend_task():
     update_account_records(query=None)
@@ -182,4 +243,4 @@ async def on_ready():
 
 check_and_create()
 failsafe(query='a')
-bot.run(TOKEN,log_handler=None)
+bot.run(TOKEN)
