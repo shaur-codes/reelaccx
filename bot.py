@@ -108,10 +108,9 @@ async def upload_video(bot, channel_id, video_file):
         logger.error(f"{pre_bot} {e}")
 
 def backend_task():
-    logger.info("[check_new_posts] Starting check_new_posts")
     update_account_records(query=None)
     data = loadx()
-    if data is None:  # Check if data is loaded properly.
+    if data is None:  
         return
 
     for account in data["accounts"]:
@@ -150,13 +149,14 @@ async def frontend_task(bot):
                 else:
                     upload_success = await upload_video(bot, channel_id=channel_id, video_file=f'temp/{file}')
                     if not upload_success:
+                        server=server['name']
                         all_servers_uploaded = False
                         break  
                     elif upload_success:
-                        await send_message(channel_id=LOGCHANNEL,message=f"task file-upload for {file} has been successful in {server["name"]}, channel_ID: {channel_id}")
+                        await send_message(channel_id=LOGCHANNEL,message=f"task file-upload for {file} has been successful in {server}, channel_ID: {channel_id}")
                     else:
-                        logger.warning(f"something unexpected happened while sending file:{file} in server:{server['name']}, channel_ID:{channel_id}")
-                        await send_message(channel_id=LOGCHANNEL,message=f"something unexpected happened while sending file:{file} in server:{server['name']}, channel_ID:{channel_id}")
+                        logger.warning(f"something unexpected happened while sending file:{file} in server:{server}, channel_ID:{channel_id}")
+                        await send_message(channel_id=LOGCHANNEL,message=f"something unexpected happened while sending file:{file} in server:{server}, channel_ID:{channel_id}")
             if all_servers_uploaded:
                 files_to_remove.append(file)
 
@@ -168,9 +168,9 @@ async def frontend_task(bot):
 
 async def combined_task():
     loop = asyncio.get_event_loop()
-    logger.info("backend task")
+    logger.info(f"{pre} initiating backend task")
     await loop.run_in_executor(None, backend_task)
-    logger.info("frontend task")
+    logger.info(f"{pre} initiating frontend task")
     await frontend_task(bot=bot)
         
 @bot.event
