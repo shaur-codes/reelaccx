@@ -10,6 +10,8 @@ import logging.handlers
 from colorama import Fore, Style, init
 from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+
 # Initialize environment and bot settings
 init(autoreset=True)
 load_dotenv()
@@ -19,26 +21,13 @@ LOGCHANNEL=os.getenv("LOGCHANNEL")
 intents = discord.Intents.default()
 intents.message_content = True
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
-#logger.add("bot.log", format="{time} {level} {message}", level="INFO")
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-logging.getLogger('discord.http').setLevel(logging.INFO)
-handler = logging.handlers.RotatingFileHandler(
-    filename='discord.log',
-    encoding='utf-8',
-    maxBytes=32 * 1024 * 1024,  # 32 MiB
-    backupCount=5,  # Rotate through 5 files
-)
-dt_fmt = '%Y-%m-%d %H:%M:%S'
-formatter = logging.Formatter('[{asctime}] [{levelname:<8}] {name}: {message}', dt_fmt, style='{')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+logger.add("bot.log", format="{time} {level} {message}", level="INFO")
 bot = commands.AutoShardedBot(command_prefix="/", intents=intents)
 
 
 async def send_message(channel_id, message):
     await bot.wait_until_ready()
-    channel = bot.fetch_channel(channel_id)
+    channel = await bot.fetch_channel(channel_id)
     if channel:
         await channel.send(message)
     else:
@@ -56,7 +45,7 @@ async def temprature(ctx):
         logger.warning(f"{pre} {e}")
         await ctx.send(e)
 
-@bot.commmand(name="uptime",description="return the uptime of the server",category="server configuration")
+@bot.command(name="uptime",description="return the uptime of the server",category="server configuration")
 async def uptime(ctx):
     try:
         await ctx.send("recieving info...")
@@ -77,27 +66,7 @@ async def storage(ctx):
     except Exception as e:
         logger.warning(f"{pre} {e}")
         await ctx.send(e)
-
-@bot.command(name="adduser", description="Add an IG username to get reels from")
-async def adduser(ctx, username: str, member_id: str):
-    try:
-
-        if member_id == VERIFIED_MEMBER_ID:
-            await ctx.send(f"trying to add {username} in records")
-            try:
-                success=add_new_account(username)
-                if success:
-                    await ctx.send(f"User {username} added successfully!")
-                    logger.info(f"User {username} added successfully!")
-            except Exception as e:
-                await ctx.send(f"{e}")
-                logger.warning(f"{pre} {e}")
-        else:
-            await ctx.send("Invalid member ID. You are not authorized to add users.")
-    except Exception as e:
-        logger.warning(f"{pre_bot} {e}")
-        await ctx.send(e)
-
+        
 @bot.command(name="rmuser", description="Remove an IG username from the records")
 async def removeuser(ctx, username: str, member_id: str):
     try:
@@ -118,6 +87,20 @@ async def removeuser(ctx, username: str, member_id: str):
         logger.warning(f"{pre_bot} {e}")
         await ctx.send(e)
 
+@bot.command(name="adduser", description="Add an IG username to get reels from")
+async def adduser(ctx, username: str, member_id: str):
+    try:
+
+        if member_id == VERIFIED_MEMBER_ID:
+            await ctx.send(f"trying to add {username} in records")
+            await add_new_account(username)
+            await ctx.send(f"User {username} added successfully!")
+        else:
+            await ctx.send("Invalid member ID. You are not authorized to add users.")
+    except Exception as e:
+        logger.warning(f"{pre_bot} {e}")
+        await ctx.send(e)
+
 @bot.command(name="addchannel", description="Add a channel along with its server's name")
 async def addchannel(ctx, username: str, server_name: str, channel_id: int, member_id: str):
     try:
@@ -126,7 +109,7 @@ async def addchannel(ctx, username: str, server_name: str, channel_id: int, memb
             if success == 102:
                 await ctx.send(f"account {username} has been added in channel {channel_id} of server {server_name}")
                 try:
-                    await send_message(channel_id=channel_id,message=f'Congrats {server_name}!! We have added {username}. ')
+                    await send_message(channel_id=channel_id,message=f'Congrats {server_name}!! this channel will now recieve posts from {username} ')
                 except Exception as e:
                     logger.warning(f"{pre_bot} {e}")
             elif success == 101:
@@ -141,8 +124,8 @@ async def addchannel(ctx, username: str, server_name: str, channel_id: int, memb
     except Exception as e:
         logger.warning(f"{pre_bot} {e}")
         await ctx.send(e)
-
-@bot.command(name="removechannel", description="Remove a channel from the records")
+        
+@bot.command(name="rmchannel", description="Remove a channel from the records")
 async def removechannel(ctx, username: str, server_name: str, channel_id: int, member_id: str):
     try:
         if member_id == VERIFIED_MEMBER_ID:
@@ -165,43 +148,15 @@ async def help(ctx, member_id: str):
     else:
         await ctx.send("Please enter a correct verification ID")
 
-@bot.command(name="sendnotice", description="Send notice to all servers")
-async def sendnotice(ctx,notice:str):
-    try:
-        data = loadx()
-        if data is None:
-            await ctx.send("Error: Unable to load data from records.json")
-            return
-
-        for account in data["accounts"]:
-            for server in account["server"]:
-                channel_id = server["channel"]
-                name=server['name']
-                try:
-                    channel = await bot.fetch_channel(channel_id)
-                    if channel:
-                        await channel.send(notice)
-                        await ctx.send(f"Notice sent to server {name} (Channel ID: {channel_id})")
-                        logger.info(f"Notice sent to server {name} (Channel ID: {channel_id})")
-                    else:
-                        await ctx.send(f"Channel with ID {channel_id} not found.")
-                        logger.warning(f"Channel with ID {channel_id} not found.")
-                except Exception as e:
-                    await ctx.send(f"Error sending notice to server {name}: {e}")
-                    logger.warning(f"Error sending notice to server {name}: {e}")
-    except Exception as e:
-        await ctx.send(f"Error: {e}")
-        logger.warning(f"{pre} {e}")
-
 async def upload_video(bot, channel_id, video_file):
     channel = await bot.fetch_channel(channel_id)
     try:
 
         if channel:
             message=await channel.send(file=discord.File(video_file))
+            await message.add_reaction("💀")
             await message.add_reaction("👍")
             await message.add_reaction("🌟")
-            await message.add_reaction("💀")
             logger.success(f"{pre_bot} upload has been successfull for {video_file} in Channel ID: {channel_id}")
             return True
         else:
@@ -212,12 +167,11 @@ async def upload_video(bot, channel_id, video_file):
     except Exception as e:
         logger.error(f"{pre_bot} {e}")
 
+
 def backend_task():
-    logger.info("[check_new_posts] Starting check_new_posts")
     update_account_records(query=None)
-    update_server_count()
     data = loadx()
-    if data is None:  # Check if data is loaded properly.
+    if data is None:  
         return
 
     for account in data["accounts"]:
@@ -241,49 +195,62 @@ def backend_task():
 
 async def frontend_task(bot):
     data = loadx()
-    if data is None:  
+    if data is None:
         return
 
+    files_to_remove = {}
     for account in data["accounts"]:
-        files_to_remove = []
+        account_files_to_remove = []
         for file in account["files"]:
             all_servers_uploaded = True
             for server in account["server"]:
                 channel_id = server["channel"]
                 if channel_id is None:
                     all_servers_uploaded = False
-                    break  
+                    break
                 else:
                     upload_success = await upload_video(bot, channel_id=channel_id, video_file=f'temp/{file}')
                     if not upload_success:
+                        server_name = server['name']
                         all_servers_uploaded = False
-                        break  
-                    elif upload_success:
-                        await send_message(channel_id=LOGCHANNEL,message=f"task file-upload for {file} has been successful in {server["name"]}, channel_ID: {channel_id}")
+                        logger.warning(f"Upload failed for {file} in server {server_name}, channel_ID: {channel_id}")
+                        break
                     else:
-                        logger.warning(f"something unexpected happened while sending file:{file} in server:{server['name']}, channel_ID:{channel_id}")
-                        await send_message(channel_id=LOGCHANNEL,message=f"something unexpected happened while sending file:{file} in server:{server['name']}, channel_ID:{channel_id}")
+                        await send_message(LOGCHANNEL, message=f"Task file-upload for {file} has been successful in {server['name']}, channel_ID: {channel_id}")
             if all_servers_uploaded:
-                files_to_remove.append(file)
+                await send_message(LOGCHANNEL, message=f"All files have been uploaded in their respective servers without any issue")
+                account_files_to_remove.append(file)
+                await send_message(LOGCHANNEL, message=f"Marked {file} for removal")
+                logger.info(f"Marked {file} for removal")
 
-        for file in files_to_remove:
-            account["files"].remove(file)
-            await rmfile(file)
+        files_to_remove[account["name"]] = account_files_to_remove
 
-        dumpx(data)  
+    for account in data["accounts"]:
+        account_files_to_remove = files_to_remove.get(account["name"], [])
+        for file in account_files_to_remove:
+            try:
+                account["files"].remove(file)
+                await rmfile(f"temp/{file}")
+                logger.info(f"Removed {file}")
+                await send_message(LOGCHANNEL, message=f"Removed {file}")
+            except Exception as e:
+                logger.error(f"Error removing file {file}: {e}")
+                await send_message(LOGCHANNEL, message=f"Error removing file {file}: {e}")
+
+    dumpx(data)
 
 async def combined_task():
     loop = asyncio.get_event_loop()
-    logger.info(f"{pre} Initiating backend task")
+    logger.info(f"{pre} initiating backend task")
     await loop.run_in_executor(None, backend_task)
-    logger.info(f"{pre} Initiatingfrontend task")
+    logger.info(f"{pre} initiating frontend task")
     await frontend_task(bot=bot)
         
 @bot.event
 async def on_ready():
-    logger.info(f'We have logged in as {bot.user}')
+    print(f'We have logged in as {bot.user}')
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(combined_task, 'interval', hours=4,next_run_time=datetime.now())
+    scheduler.add_job(combined_task, 'interval', hours=3,next_run_time=datetime.now())
     scheduler.start()
 
 check_and_create()
