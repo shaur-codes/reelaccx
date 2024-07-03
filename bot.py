@@ -109,7 +109,7 @@ async def addchannel(ctx, username: str, server_name: str, channel_id: int, memb
             if success == 102:
                 await ctx.send(f"account {username} has been added in channel {channel_id} of server {server_name}")
                 try:
-                    await send_message(channel_id=channel_id,message=f'Congrats {server_name}!! this Channel is now added in Our records. ')
+                    await send_message(channel_id=channel_id,message=f'Congrats {server_name}!! this channel will now recieve posts from {username} ')
                 except Exception as e:
                     logger.warning(f"{pre_bot} {e}")
             elif success == 101:
