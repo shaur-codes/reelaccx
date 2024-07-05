@@ -27,7 +27,7 @@ bot = commands.AutoShardedBot(command_prefix="/", intents=intents)
 
 async def send_message(channel_id, message):
     await bot.wait_until_ready()
-    channel = bot.fetch_channel(channel_id)
+    channel = await bot.fetch_channel(channel_id)
     if channel:
         await channel.send(message)
     else:
@@ -45,7 +45,7 @@ async def temprature(ctx):
         logger.warning(f"{pre} {e}")
         await ctx.send(e)
 
-@bot.commmand(name="uptime",description="return the uptime of the server",category="server configuration")
+@bot.command(name="uptime",description="return the uptime of the server",category="server configuration")
 async def uptime(ctx):
     try:
         await ctx.send("recieving info...")
@@ -154,9 +154,9 @@ async def upload_video(bot, channel_id, video_file):
 
         if channel:
             message=await channel.send(file=discord.File(video_file))
+            await message.add_reaction("😂")
             await message.add_reaction("💀")
-            await message.add_reaction("👍")
-            await message.add_reaction("🌟")
+            await message.add_reaction("🗿")
             logger.success(f"{pre_bot} upload has been successfull for {video_file} in Channel ID: {channel_id}")
             return True
         else:
@@ -195,37 +195,49 @@ def backend_task():
 
 async def frontend_task(bot):
     data = loadx()
-    if data is None:  
+    if data is None:
         return
 
+    files_to_remove = {}
     for account in data["accounts"]:
-        files_to_remove = []
+        account_files_to_remove = []
         for file in account["files"]:
             all_servers_uploaded = True
             for server in account["server"]:
                 channel_id = server["channel"]
                 if channel_id is None:
                     all_servers_uploaded = False
-                    break  
+                    break
                 else:
                     upload_success = await upload_video(bot, channel_id=channel_id, video_file=f'temp/{file}')
                     if not upload_success:
-                        server=server['name']
+                        server_name = server['name']
                         all_servers_uploaded = False
-                        break  
-                    elif upload_success:
-                        await send_message(channel_id=LOGCHANNEL,message=f"task file-upload for {file} has been successful in {server}, channel_ID: {channel_id}")
+                        logger.warning(f"Upload failed for {file} in server {server_name}, channel_ID: {channel_id}")
+                        break
                     else:
-                        logger.warning(f"something unexpected happened while sending file:{file} in server:{server}, channel_ID:{channel_id}")
-                        await send_message(channel_id=LOGCHANNEL,message=f"something unexpected happened while sending file:{file} in server:{server}, channel_ID:{channel_id}")
+                        await send_message(LOGCHANNEL, message=f"Task file-upload for {file} has been successful in {server['name']}, channel_ID: {channel_id}")
             if all_servers_uploaded:
-                files_to_remove.append(file)
+                await send_message(LOGCHANNEL, message=f"{file} has been uploaded in it's respective servers without any issue")
+                account_files_to_remove.append(file)
+                await send_message(LOGCHANNEL, message=f"Marked {file} for removal")
+                logger.info(f"Marked {file} for removal")
 
-        for file in files_to_remove:
-            account["files"].remove(file)
-            await rmfile(file)
+        files_to_remove[account["name"]] = account_files_to_remove
 
-        dumpx(data)  
+    for account in data["accounts"]:
+        account_files_to_remove = files_to_remove.get(account["name"], [])
+        for file in account_files_to_remove:
+            try:
+                account["files"].remove(file)
+                await rmfile(f"temp/{file}")
+                logger.info(f"Removed {file}")
+                await send_message(LOGCHANNEL, message=f"Removed {file}")
+            except Exception as e:
+                logger.error(f"Error removing file {file}: {e}")
+                await send_message(LOGCHANNEL, message=f"Error removing file {file}: {e}")
+
+    dumpx(data)
 
 async def combined_task():
     loop = asyncio.get_event_loop()
