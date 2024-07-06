@@ -91,26 +91,41 @@ async def removeuser(ctx, username: str, member_id: str):
 async def adduser(ctx, username: str, member_id: str):
     try:
         if member_id == VERIFIED_MEMBER_ID:
-            await ctx.send(f"Trying to add {username} to records")
-            await add_new_account(username)
-            
-            update_account_records(query=None)
-            data = loadx()
-            for account in data["accounts"]:
-                if account["name"] == username:
-                    latest_post = get_latest_post(username)
-                    if latest_post:
-                        file = f"{latest_post}.mp4"
-                        account["files"].append(file)
-                        break
-            dumpx(data) 
-            
-            await ctx.send(f"User {username} added successfully!")
+            await ctx.send(f"Trying to add {username} in records")
+            success = await add_new_account(username)
+            if success:
+                latest_post = get_latest_post(username)
+                if latest_post:
+                    post_url = get_post_url(latest_post)
+                    file = f"{latest_post}.mp4"
+                    dp = dump_post(url=post_url, filename=file)
+                    if dp:
+                        update_file(username=username, file=file)
+                        data = loadx()
+                        if data:
+                            for account in data["accounts"]:
+                                if account["name"] == username:
+                                    for server in account["server"]:
+                                        channel_id = server["channel"]
+                                        if channel_id:
+                                            upload_success = await upload_video(bot, channel_id=channel_id, video_file=f'temp/{file}')
+                                            if upload_success:
+                                                await send_message(channel_id=LOGCHANNEL, message=f"Uploaded the latest post for {username} to channel {channel_id} successfully.")
+                                            else:
+                                                await send_message(channel_id=LOGCHANNEL, message=f"Failed to upload the latest post for {username} to channel {channel_id}.")
+                        await ctx.send(f"User {username} added successfully and latest post uploaded!")
+                    else:
+                        await ctx.send(f"User {username} added, but failed to download the latest post.")
+                else:
+                    await ctx.send(f"User {username} added, but no posts found.")
+            else:
+                await ctx.send(f"User {username} was not added (see logs for more info)")
         else:
             await ctx.send("Invalid member ID. You are not authorized to add users.")
     except Exception as e:
-        logger.warning(f"{pre} {e}")
+        logger.warning(f"{pre_bot} {e}")
         await ctx.send(e)
+
 
 
 @bot.command(name="addchannel", description="Add a channel along with its server's name")
