@@ -419,35 +419,3 @@ def get_available_storage():
         return total,used,free
     except Exception as e:
         return e
-
-def remove_account(username):
-    try:
-        data = loadx()
-        accounts = data["accounts"]
-        for account in accounts:
-            if account["name"] == username:
-                accounts.remove(account)
-                dumpx(data)
-                logger.info(f"{pre_core} Account {username} has been removed from records")
-                return True
-        logger.info(f"{pre_core} Account {username} not found in records")
-    except Exception as e:
-        logger.error(e)
-
-def remove_server(account_name, server_name, channel_id) -> bool:
-    try:
-        data = loadx()
-        accounts = data["accounts"]
-        for account in accounts:
-            if account["name"] == account_name:
-                for server in account["server"]:
-                    if server["channel"] == channel_id:
-                        account["server"].remove(server)
-                        dumpx(data)
-                        logger.info(f"Removed {server_name} for {account_name}")
-                        return True
-        logger.info(f"No matching record found for server {server_name} and channel {channel_id}")
-        return False
-    except Exception as e:
-        logger.error(e)
-
