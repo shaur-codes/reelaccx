@@ -325,16 +325,16 @@ async def combined_task():
     await loop.run_in_executor(None, backend_task)
     logger.info(f"{pre} initiating frontend task")
     await frontend_task(bot=bot)
+    
+@bot.event
+async def on_ready():
+    print(f'We have logged in as {bot.user}')
+    await bot.add_cog(MyBot(bot))
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(combined_task, 'interval', hours=3,next_run_time=datetime.now())
+    scheduler.start()
 
-def check_and_create():
-    # Your implementation for check_and_create here
-    pass
 
-def failsafe(query):
-    # Your implementation for failsafe here
-    pass
-
-bot.add_cog(MyBot(bot))
 
 check_and_create()
 failsafe(query='a')
