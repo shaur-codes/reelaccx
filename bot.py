@@ -326,16 +326,11 @@ async def combined_task():
     logger.info(f"{pre} initiating frontend task")
     await frontend_task(bot=bot)
     
-@bot.event
-async def on_ready():
-    print(f'We have logged in as {bot.user}')
+async def main():
     await bot.add_cog(MyBot(bot))
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(combined_task, 'interval', hours=3,next_run_time=datetime.now())
-    scheduler.start()
+    check_and_create()
+    failsafe(query='a')
+    await bot.start(TOKEN)
 
+asyncio.run(main())
 
-
-check_and_create()
-failsafe(query='a')
-bot.run(TOKEN)
