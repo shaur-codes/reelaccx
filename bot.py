@@ -35,13 +35,24 @@ async def send_message(channel_id, message):
 class MyBot(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.bot.loop.create_task(self.setup())
 
+     async def setup(self):
+        await self.bot.wait_until_ready()
+        self.bot.tree.add_command(self.adduser)
+        self.bot.tree.add_command(self.addchannel)
+        self.bot.tree.add_command(self.lsaccounts)
+        self.bot.tree.add_command(self.hlp)
+        await self.bot.tree.sync()
+        print("Commands have been registered") 
+         
     @commands.Cog.listener()
     async def on_ready(self):
         print(f'We have logged in as {self.bot.user}')
         scheduler = AsyncIOScheduler()
         scheduler.add_job(combined_task, 'interval', hours=3, next_run_time=datetime.now())
         scheduler.start()
+        
 
     @app_commands.command(name="temprature", description="Return the temperature of the server")
     async def temperature(self, interaction: discord.Interaction):
