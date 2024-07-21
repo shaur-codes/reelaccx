@@ -19,11 +19,12 @@ load_dotenv()
 TOKEN = os.getenv("KEY")
 VERIFIED_MEMBER_ID = os.getenv("MEMBER_ID")
 LOGCHANNEL=os.getenv("LOGCHANNEL")
+APP_ID=os.getenv("APP_ID")
 intents = discord.Intents.default()
 intents.message_content = True
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
 logger.add("bot.log", format="{time} {level} {message}", level="INFO")
-bot = Bot(command_prefix="/", intents=intents,application_id=1260198187763761253)
+bot = Bot(command_prefix="/", intents=intents,application_id=APP_ID)
 
 
 async def send_message(channel_id, message):
@@ -312,7 +313,7 @@ async def frontend_task(bot):
         for file in account_files_to_remove:
             try:
                 account["files"].remove(file)
-                await rmfile(f"temp/{file}")
+                await rmfile(f"{file}")
                 logger.info(f"Removed {file}")
                 await send_message(LOGCHANNEL, message=f"Removed {file}")
             except Exception as e:
