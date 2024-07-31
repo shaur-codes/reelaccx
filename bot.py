@@ -197,12 +197,12 @@ async def removechannel(interaction: discord.Interaction, username: str, server_
 
 
 @bot.command(name="lsaccounts",description="list all accounts and their respective servers")
-@app_commands.describe()
-async def lsaccounts(interaction: discord.Interaction, member_id: str):
+#@app_commands.describe()
+async def lsaccounts(ctx,member_id:str):#(interaction: discord.Interaction, member_id: str):
     if member_id == VERIFIED_MEMBER_ID:
         data = loadx()
         if data is None:
-            await interaction.response.send_message("No data found.")
+            await ctx.send("no data found")#interaction.response.send_message("No data found.")
             return
 
         response = "Accounts and their respective servers:\n"
@@ -210,9 +210,11 @@ async def lsaccounts(interaction: discord.Interaction, member_id: str):
             account_name = account["name"]
             server_names = [server["name"] for server in account["server"]]
             response += f"- {account_name}: {', '.join(server_names)}\n"
-        await interaction.response.send_message(response)
+        await ctx.message.delete()
+        await ctx.send(response)#interaction.response.send_message(response)
     else:
-        await interaction.response.send_message("Invalid member ID. You are not authorized to list accounts.")
+        await ctx.send("Invalid member ID")#interaction.response.send_message("Invalid member ID. You are not authorized to list accounts.")
+
 
 @bot.command(name="hlp", description="Description of all commands")
 @app_commands.describe(member_id="your verification id (MODs only)")
@@ -247,6 +249,20 @@ async def upload_video(bot, channel_id, video_file):
     except Exception as e:
         logger.error(f"{pre_bot} {e}")
 
+async def is_sent(channel_id:str, filename:str) -> bool:
+    channel = bot.get_channel(channel_id)
+    if not channel:
+        logger.warning(f"Channel:{channel_id} not found!!")
+        return False
+    last_messages = await channel.history(limit=100).flatten()
+
+    for msg in last_messages:
+        if msg.attachments:
+            for attachment in msg.attachments:
+                if attachment.filename == filename:
+                    return True
+
+    return False
 
 def backend_task():
     update_account_records(query=None)
@@ -291,15 +307,18 @@ async def frontend_task(bot):
                 if channel_id is None:
                     all_servers_uploaded = False
                     break
-                else:
-                    upload_success = await upload_video(bot, channel_id=channel_id, video_file=f'temp/{file}')
-                    if not upload_success:
-                        server_name = server['name']
-                        all_servers_uploaded = False
-                        logger.warning(f"Upload failed for {file} in server {server_name}, channel_ID: {channel_id}")
-                        break
+                else:already_sent = is_sent(channel_id=channel_id,filename=f'temp/{file}')
+                    if already_sent:
+                        continue
                     else:
-                        await send_message(LOGCHANNEL, message=f"Task file-upload for {file} has been successful in {server['name']}, channel_ID: {channel_id}")
+                        upload_success = await upload_video(bot, channel_id=channel_id, video_file=f'temp/{file}')
+                        if not upload_success:
+                            server_name = server['name']
+                            all_servers_uploaded = False
+                            logger.warning(f"Upload failed for {file} in server {server_name}, channel_ID: {channel_id}")
+                            break
+                        else:
+                            await send_message(LOGCHANNEL, message=f"Task file-upload for {file} has been successful in {server['name']}, channel_ID: {channel_id}")
             if all_servers_uploaded:
                 await send_message(LOGCHANNEL, message=f"{file} has been uploaded in it's respective servers without any issue")
                 account_files_to_remove.append(file)
