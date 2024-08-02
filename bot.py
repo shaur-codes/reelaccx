@@ -307,7 +307,8 @@ async def frontend_task(bot):
                 if channel_id is None:
                     all_servers_uploaded = False
                     break
-                else:already_sent = is_sent(channel_id=channel_id,filename=f'temp/{file}')
+                else:
+                    already_sent = await is_sent(channel_id=channel_id,filename=f'temp/{file}')
                     if already_sent:
                         continue
                     else:
