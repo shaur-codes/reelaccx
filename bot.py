@@ -22,7 +22,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
 logger.add("bot.log", format="{time} {level} {message}", level="INFO")
-bot = commands.AutoShardedBot(command_prefix="/", intents=intents)
+bot = commands.AutoShardedBot(command_prefix="!", intents=intents)
 
 
 async def send_message(channel_id, message):
