@@ -5,3 +5,4 @@ apscheduler
 colorama
 instaloader
 requests
+loguru
