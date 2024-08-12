@@ -1,3 +1,4 @@
+#version=nu.0.5.5
 import instaloader
 import requests
 from json import load, dump
