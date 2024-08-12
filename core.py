@@ -119,7 +119,6 @@ def update_shortcodes(username):
                 break
         
         if user_found:
-            # Save updated data
             dumpx(data=data)
             logger.info(f'{pre_core} Account {username} has been updated.')
             return len(shortcodes)
@@ -153,9 +152,7 @@ def update_shortcodes(username):
             return 112
         except Exception as f:
             logger.error(f"{f}")
-            return 113
-
-        
+            return 113     
     except Exception as e:
         logger.error(f'{pre_core} Unexpected error: {e}')
         return False
@@ -185,7 +182,7 @@ def update_account_records(query): #updates threshold
             try:
                 updated_account_name = data["accounts"][freq-1]["name"]
                 data["thresh"] = freq
-                a = update_shortcodes(username=updated_account_name)
+                a = update_shortcodes(username=updated_account_name)#update shortcodes for the added account
                 a=a-1
                 data["posts"] = a
                 logger.info(f"{pre_core} New user '{updated_account_name}' found")
@@ -220,6 +217,7 @@ def get_post_url(shortcode) -> str: #returns the url of the post
             return post.url
     except Exception as e:
         logger.error(e)
+    
 
 def dump_post(url: str, filename: str) -> bool: #downloads the post from a provided url as filename
     try:
@@ -235,7 +233,36 @@ def dump_post(url: str, filename: str) -> bool: #downloads the post from a provi
         logger.error(f"{pre_core} Error downloading file: {e}")
         return False
 
-def check_for_new_post(username) -> bool: #checks if there is a new post from an account
+
+def check_new_post_deviation(username) -> bool: #check for new post by shortcode deviation
+    try:
+        data=loadx()
+        position=account_position(username=username)
+        if position!=-1:
+            old_data=data["accounts"][position]["last_post"]
+        else:
+            logger.error(f"{pre_core} Error: Account {username} not found. trying to update records...")
+            update_account_records(query='update')
+            return False
+        
+        new_data=get_latest_post(username=username)
+
+        if old_data is None or new_data is None:
+            logger.error(f"{pre_core} Error: old_data or new_data is None for account {username}")
+            return False
+        if new_data!=old_data:
+            data["accounts"][position]["last_post"]=new_data
+            dumpx(data=data)
+            logger.info(f"{pre_core} New post found for {username}")
+            return True
+        else:
+            logger.info(f"{pre_core} New post for {username} NOT FOUND")
+            return False
+    except Exception as e:
+        logger.error(e)
+        return False
+
+def check_for_new_post(username) -> bool: #checks if there is a new post by number of posts
     try:
         data = loadx()
         position = account_position(username=username)
@@ -248,7 +275,6 @@ def check_for_new_post(username) -> bool: #checks if there is a new post from an
 
         new_data = update_shortcodes(username=username)
 
-        # Ensure old_data and new_data are not None
         if old_data is None or new_data is None:
             logger.error(f"{pre_core} Error: old_data or new_data is None for account {username}")
             return False
@@ -297,6 +323,7 @@ def add_new_account(username): #adds a new account
             "name": username,
             "posts": 0,
             "files":[],
+            "last_post":"not_null",
             "shortcodes": [],
             "server_count": 0,
             "server": []
@@ -367,6 +394,7 @@ def check_and_create():
             {
                 "name": "wtf_su2",
                 "posts": 0,
+                "last_post": "not_null",
                 "shortcodes": ["C8TdzW7Rlve"],
                 "files": [],
                 "server_count": 1,
@@ -455,4 +483,12 @@ def remove_server(account_name, server_name, channel_id) -> bool:
         return False
     except Exception as e:
         logger.error(e)
+
+
+def is_image(image_url):
+    image_formats = ("image/png", "image/jpeg", "image/jpg")
+    r = requests.head(image_url)
+    if r.headers["content-type"] in image_formats:
+        return True
+    return False
 
