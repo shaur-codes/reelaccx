@@ -199,18 +199,22 @@ async def help(ctx, member_id: str):
         await ctx.send("Please enter a correct verification ID")
 
 
-async def is_sent(channel_id:str, filename:str) -> bool:
+async def is_sent(channel_id: str, filename: str) -> bool:
     channel = bot.get_channel(channel_id)
     if not channel:
         logger.warning(f"Channel:{channel_id} not found!!")
         return False
-    last_messages = await channel.history(limit=100).flatten()
+    
+    # Use list comprehension to gather messages from the async generator
+    last_messages = [msg async for msg in channel.history(limit=10)]
 
     for msg in last_messages:
         if msg.attachments:
             for attachment in msg.attachments:
                 if attachment.filename == filename:
                     return True
+    return False
+
                 
 async def upload_video(bot, channel_id, video_file):
     channel = await bot.fetch_channel(channel_id)
