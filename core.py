@@ -1,3 +1,4 @@
+#version=m.0.5.5
 import instaloader
 import requests
 from json import load, dump
@@ -119,7 +120,6 @@ def update_shortcodes(username):
                 break
         
         if user_found:
-            # Save updated data
             dumpx(data=data)
             logger.info(f'{pre_core} Account {username} has been updated.')
             return len(shortcodes)
@@ -153,9 +153,7 @@ def update_shortcodes(username):
             return 112
         except Exception as f:
             logger.error(f"{f}")
-            return 113
-
-        
+            return 113     
     except Exception as e:
         logger.error(f'{pre_core} Unexpected error: {e}')
         return False
@@ -185,7 +183,7 @@ def update_account_records(query): #updates threshold
             try:
                 updated_account_name = data["accounts"][freq-1]["name"]
                 data["thresh"] = freq
-                a = update_shortcodes(username=updated_account_name)
+                a = update_shortcodes(username=updated_account_name)#update shortcodes for the added account
                 a=a-1
                 data["posts"] = a
                 logger.info(f"{pre_core} New user '{updated_account_name}' found")
@@ -201,7 +199,7 @@ def update_account_records(query): #updates threshold
     except Exception as e:
         logger.error(f"{pre_core} [update_account_records()][1] {e}")
 
-def account_position(username) -> int:
+def account_position(username) -> int: #returns the position of account in records
     try:
         accounts = loadx()["accounts"]
         for i, account in enumerate(accounts):
@@ -211,7 +209,7 @@ def account_position(username) -> int:
     except Exception as e:
         logger.error(e)
 
-def get_post_url(shortcode) -> str:
+def get_post_url(shortcode) -> str: #returns the url of the post 
     try:
         post = instaloader.Post.from_shortcode(L.context, shortcode=shortcode)
         if post.is_video:
@@ -220,8 +218,9 @@ def get_post_url(shortcode) -> str:
             return post.url
     except Exception as e:
         logger.error(e)
+    
 
-def dump_post(url: str, filename: str) -> bool:
+def dump_post(url: str, filename: str) -> bool: #downloads the post from a provided url as filename
     try:
         response = requests.get(url)
         if response.status_code == 200:
@@ -235,7 +234,36 @@ def dump_post(url: str, filename: str) -> bool:
         logger.error(f"{pre_core} Error downloading file: {e}")
         return False
 
-def check_for_new_post(username) -> bool:
+
+def check_new_post_deviation(username) -> bool: #check for new post by shortcode deviation
+    try:
+        data=loadx()
+        position=account_position(username=username)
+        if position!=-1:
+            old_data=data["accounts"][position]["last_post"]
+        else:
+            logger.error(f"{pre_core} Error: Account {username} not found. trying to update records...")
+            update_account_records(query='update')
+            return False
+        
+        new_data=get_latest_post(username=username)
+
+        if old_data is None or new_data is None:
+            logger.error(f"{pre_core} Error: old_data or new_data is None for account {username}")
+            return False
+        if new_data!=old_data:
+            data["accounts"][position]["last_post"]=new_data
+            dumpx(data=data)
+            logger.info(f"{pre_core} New post found for {username}")
+            return True
+        else:
+            logger.info(f"{pre_core} New post for {username} NOT FOUND")
+            return False
+    except Exception as e:
+        logger.error(e)
+        return False
+
+def check_for_new_post(username) -> bool: #checks if there is a new post by number of posts
     try:
         data = loadx()
         position = account_position(username=username)
@@ -248,7 +276,6 @@ def check_for_new_post(username) -> bool:
 
         new_data = update_shortcodes(username=username)
 
-        # Ensure old_data and new_data are not None
         if old_data is None or new_data is None:
             logger.error(f"{pre_core} Error: old_data or new_data is None for account {username}")
             return False
@@ -269,7 +296,7 @@ def check_for_new_post(username) -> bool:
         logger.error(e)
         return False
 
-def update_server_count(username) -> bool:
+def update_server_count(username) -> bool: #updates the number of servers present in an account
     try:
         data = loadx()
         accounts = data["accounts"]
@@ -285,7 +312,7 @@ def update_server_count(username) -> bool:
     except Exception as e:
         logger.error(e)
 
-def add_new_account(username):
+def add_new_account(username): #adds a new account
     try:
         data = loadx()
         accounts = data["accounts"]
@@ -297,6 +324,7 @@ def add_new_account(username):
             "name": username,
             "posts": 0,
             "files":[],
+            "last_post":"not_null",
             "shortcodes": [],
             "server_count": 0,
             "server": []
@@ -308,6 +336,7 @@ def add_new_account(username):
         update_shortcodes(username=username)
         add_server(account_name=username,server_name='Reelaccx',channel_id=int(CHOVERFLOW))
         update_server_count(username)
+        return True
 
     except Exception as e:
         logger.error(e)
@@ -366,6 +395,7 @@ def check_and_create():
             {
                 "name": "wtf_su2",
                 "posts": 0,
+                "last_post": "not_null",
                 "shortcodes": ["C8TdzW7Rlve"],
                 "files": [],
                 "server_count": 1,
@@ -396,10 +426,12 @@ async def is_connected():
 
 def get_cpu_temperature():
     try:
+        logger.info(f"{pre_core} retrieving CPU temprature")
         temp_str = os.popen("vcgencmd measure_temp").readline()
         temp_celsius = float(temp_str.replace("temp=", "").replace("'C\n", ""))
         return temp_celsius
     except Exception as e:
+        logger.warning(f"{pre_core} get_cpu_temprature -> {e}")
         return e
     
 def get_server_uptime():
@@ -408,6 +440,7 @@ def get_server_uptime():
         uptime = uptime_str.split(",")[0].split("up ")[1]
         return uptime.strip()
     except Exception as e:
+        logger.warning(f"{pre_core} get_server_uptime() -> {e}")
         return e
 
 def get_available_storage():
@@ -418,4 +451,45 @@ def get_available_storage():
         free=free//(2**30)
         return total,used,free
     except Exception as e:
+        logger.warning(f"{pre_core} get_available_storage() -> {e}")
         return e
+
+def remove_account(username):
+    try:
+        data = loadx()
+        accounts = data["accounts"]
+        for account in accounts:
+            if account["name"] == username:
+                accounts.remove(account)
+                dumpx(data)
+                logger.info(f"{pre_core} Account {username} has been removed from records")
+                return True
+        logger.info(f"{pre_core} Account {username} not found in records")
+    except Exception as e:
+        logger.error(e)
+
+def remove_server(account_name, server_name, channel_id) -> bool:
+    try:
+        data = loadx()
+        accounts = data["accounts"]
+        for account in accounts:
+            if account["name"] == account_name:
+                for server in account["server"]:
+                    if server["channel"] == channel_id:
+                        account["server"].remove(server)
+                        dumpx(data)
+                        logger.info(f"Removed {server_name} for {account_name}")
+                        return True
+        logger.info(f"No matching record found for server {server_name} and channel {channel_id}")
+        return False
+    except Exception as e:
+        logger.error(e)
+
+
+def is_image(image_url):
+    image_formats = ("image/png", "image/jpeg", "image/jpg")
+    r = requests.head(image_url)
+    if r.headers["content-type"] in image_formats:
+        return True
+    return False
+
