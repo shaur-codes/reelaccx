@@ -1,4 +1,4 @@
-#nu.0.5.5
+    #nu.0.5.5
 import discord
 from discord.ext import commands
 import os
@@ -212,6 +212,7 @@ async def is_sent(channel_id: str, filename: str) -> bool:
         if msg.attachments:
             for attachment in msg.attachments:
                 if attachment.filename == filename:
+                    logger.info(f"{pre_bot} {filename} was already sent.")
                     return True
     return False
 
