@@ -214,6 +214,7 @@ async def is_sent(channel_id: str, filename: str) -> bool:
                 if attachment.filename == filename:
                     logger.info(f"{pre_bot} {filename} was already sent.")
                     return True
+    logger.info(f"{pre_bot} {filename} wasn't found in the last 10 posts.")
     return False
 
                 
