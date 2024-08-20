@@ -325,6 +325,7 @@ async def combined_task():
         
 @bot.event
 async def on_ready():
+    await client.tree.sync()
     print(f'We have logged in as {bot.user}')
     scheduler = AsyncIOScheduler()
     scheduler.add_job(combined_task, 'interval', hours=3,next_run_time=datetime.now())
