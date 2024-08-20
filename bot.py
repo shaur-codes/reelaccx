@@ -37,7 +37,7 @@ async def send_message(channel_id, message):
         print(f"Could not find channel with ID: {channel_id}")
 
 # Commands
-@client.tree.command(name="temprature")
+@bot.tree.command(name="temprature")
 async def temprature(interaction:discord.Interaction):
     if not interaction.response.is_done():
         await interaction.response.defer()
@@ -50,7 +50,7 @@ async def temprature(interaction:discord.Interaction):
             logger.warning(f"{pre} {e}")
             await interaction.followup.send(e)
 
-@client.tree.command(name="uptime", description="return the uptime of the server")
+@bot.tree.command(name="uptime", description="return the uptime of the server")
 async def uptime(interaction: discord.Interaction):
     if not interaction.response.is_done():
         await interaction.response.defer()
@@ -325,7 +325,8 @@ async def combined_task():
         
 @bot.event
 async def on_ready():
-    await bot.tree.sync()
+    times_synced=await bot.tree.sync()
+    logger.info(f"synced {times_synced} commands")
     print(f'We have logged in as {bot.user}')
     scheduler = AsyncIOScheduler()
     scheduler.add_job(combined_task, 'interval', hours=3,next_run_time=datetime.now())
