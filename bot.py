@@ -1,4 +1,4 @@
-#m.0.5.5
+#m.0.6.0
 import discord
 from discord.ext import commands
 import os
@@ -13,17 +13,18 @@ from datetime import datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from discord.ext.commands import Bot
 
-# Initialize environment and bot settings
+
 init(autoreset=True)
 load_dotenv()
 TOKEN = os.getenv("KEY")
 VERIFIED_MEMBER_ID = os.getenv("MEMBER_ID")
 LOGCHANNEL=os.getenv("LOGCHANNEL")
 APP_ID=os.getenv("APP_ID")
+UID=os.getenv("UID")
 intents = discord.Intents.default()
 intents.message_content = True
 pre = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
-logger.add("bot.log", format="{time} {level} {message}", level="INFO")
+logger.add("log.log", format="{time} {level} {message}", level="INFO")
 bot = commands.AutoShardedBot(command_prefix="!", intents=intents)
 client = Bot(command_prefix="/", intents=intents,application_id=APP_ID)
 
@@ -200,12 +201,15 @@ async def help(ctx, member_id: str):
 
 
 async def is_sent(channel_id: str, filename: str) -> bool:
-    channel = bot.get_channel(channel_id)
+    channel = bot.get_channel(int(channel_id))
     if not channel:
         logger.warning(f"Channel:{channel_id} not found!!")
         return False
+    elif channel is None:
+        print(f"Channel with ID {channel_id} not found or bot lacks permissions.")
     
-    # Use list comprehension to gather messages from the async generator
+    else:
+        pass
     last_messages = [msg async for msg in channel.history(limit=10)]
 
     for msg in last_messages:
@@ -238,6 +242,33 @@ async def upload_video(bot, channel_id, video_file):
         logger.error(f"{pre_bot} {e}")
 
 
+async def backup():
+    current_time=datetime.now().strftime("%H%M")
+    if int(current_time) >= 2359 and int(current_time) < 200 or int(current_time) >= 1200 and int(current_time) < 1400:
+        user = await bot.fetch_user(UID)
+        files_to_upload=['.env','records.json','log.log']
+        dm_channel = await user.create_dm()
+        for file in files_to_upload:
+            if os.path.exists(file):
+                await dm_channel.send(file=discord.File(file))
+                logger.info(f"{pre_bot} sent {file} to {user.name}")
+                await send_message(channel_id=LOGCHANNEL,message="task: Backup\nSuccess:True")
+            else:
+                await dm_channel.send(f"File {file} not found")
+                if file==".env":
+                    pseudonym="memes_compressed.tar.xz"
+                elif file=="records.json":
+                    pseudonym="logfile.log"
+                elif file=="log.log":
+                    pseudonym="compressed.tar.xz"
+                else:
+                    pseudonym="bullshit.txt"
+                await send_message(channel_id=LOGCHANNEL,message=f"task: Backup\nSuccess:False\nReason:File {pseudonym} not found!!")
+    else:
+        pass
+
+
+
 def backend_task():
     update_account_records(query=None)
     data = loadx()
@@ -253,7 +284,7 @@ def backend_task():
             if latest_post:
                 post_url = get_post_url(latest_post)
                 if is_image(post_url):
-                    file="f{latest_post}.png"
+                    file=f"{latest_post}.png"
                 else:
                     file = f"{latest_post}.mp4"
                 dp = dump_post(url=post_url, filename=file)
@@ -318,6 +349,8 @@ async def frontend_task(bot):
 
 async def combined_task():
     loop = asyncio.get_event_loop()
+    logger.info(f"{pre} initiating backup")
+    backup()
     logger.info(f"{pre} initiating backend task")
     await loop.run_in_executor(None, backend_task)
     logger.info(f"{pre} initiating frontend task")
