@@ -357,7 +357,7 @@ async def frontend_task(bot):
 async def combined_task():
     loop = asyncio.get_event_loop()
     logger.info(f"{pre} initiating backup")
-    backup()
+    await backup()
     logger.info(f"{pre} initiating backend task")
     await loop.run_in_executor(None, backend_task)
     logger.info(f"{pre} initiating frontend task")
