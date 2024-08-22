@@ -204,10 +204,11 @@ async def is_sent(channel_id: str, filename: str) -> bool:
     channel = bot.get_channel(int(channel_id))
     if not channel:
         logger.warning(f"Channel:{channel_id} not found!!")
+        await send_message(channel_id=CHOVERFLOW,message=f"[Is_sent()] Channel {channel_id} not found!!")
         return False
     elif channel is None:
         print(f"Channel with ID {channel_id} not found or bot lacks permissions.")
-    
+        await send_message(channel_id=CHOVERFLOW, message=f"[Is_sent()] Channel {channel_id} not found or bot lacks permissions.")
     else:
         pass
     last_messages = [msg async for msg in channel.history(limit=10)]
@@ -217,8 +218,10 @@ async def is_sent(channel_id: str, filename: str) -> bool:
             for attachment in msg.attachments:
                 if attachment.filename == filename:
                     logger.info(f"{pre_bot} {filename} was already sent.")
+                    await send_message(channel_id=CHOVERFLOW,message=f"{filename} was already sent in {channel_id}. Skipping")
                     return True
     logger.info(f"{pre_bot} {filename} wasn't found in the last 10 posts.")
+    await send_message(channel_id=CHOVERFLOW,message=f"{filename} is ready to be sent.")
     return False
 
                 
@@ -248,12 +251,13 @@ async def backup():
         user = await bot.fetch_user(UID)
         files_to_upload=['.env','records.json','log.log']
         dm_channel = await user.create_dm()
+        all_sent=True
         for file in files_to_upload:
             if os.path.exists(file):
                 await dm_channel.send(file=discord.File(file))
                 logger.info(f"{pre_bot} sent {file} to {user.name}")
-                await send_message(channel_id=LOGCHANNEL,message="task: Backup\nSuccess:True")
             else:
+                all_sent=False
                 await dm_channel.send(f"File {file} not found")
                 if file==".env":
                     pseudonym="memes_compressed.tar.xz"
@@ -264,6 +268,9 @@ async def backup():
                 else:
                     pseudonym="bullshit.txt"
                 await send_message(channel_id=LOGCHANNEL,message=f"task: Backup\nSuccess:False\nReason:File {pseudonym} not found!!")
+        if all_sent:
+            await send_message(channel_id=LOGCHANNEL,message="task: Backup\nSuccess:True")
+
     else:
         pass
 
