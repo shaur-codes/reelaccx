@@ -204,11 +204,11 @@ async def is_sent(channel_id: str, filename: str) -> bool:
     channel = bot.get_channel(int(channel_id))
     if not channel:
         logger.warning(f"Channel:{channel_id} not found!!")
-        await send_message(channel_id=CHOVERFLOW,message=f"[Is_sent()] Channel {channel_id} not found!!")
+        await send_message(channel_id=LOGCHANNEL,message=f"[Is_sent()] Channel {channel_id} not found!!")
         return False
     elif channel is None:
         print(f"Channel with ID {channel_id} not found or bot lacks permissions.")
-        await send_message(channel_id=CHOVERFLOW, message=f"[Is_sent()] Channel {channel_id} not found or bot lacks permissions.")
+        await send_message(channel_id=LOGCHANNEL, message=f"[Is_sent()] Channel {channel_id} not found or bot lacks permissions.")
     else:
         pass
     last_messages = [msg async for msg in channel.history(limit=10)]
@@ -218,10 +218,10 @@ async def is_sent(channel_id: str, filename: str) -> bool:
             for attachment in msg.attachments:
                 if attachment.filename == filename:
                     logger.info(f"{pre_bot} {filename} was already sent.")
-                    await send_message(channel_id=CHOVERFLOW,message=f"{filename} was already sent in {channel_id}. Skipping")
+                    await send_message(channel_id=LOGCHANNEL,message=f"{filename} was already sent in {channel_id}. Skipping")
                     return True
     logger.info(f"{pre_bot} {filename} wasn't found in the last 10 posts.")
-    await send_message(channel_id=CHOVERFLOW,message=f"{filename} is ready to be sent.")
+    await send_message(channel_id=LOGCHANNEL,message=f"{filename} is ready to be sent.")
     return False
 
                 
