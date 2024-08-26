@@ -1,4 +1,4 @@
-#version=m.0.5.5
+#version=m.0.6.1
 import instaloader
 import requests
 from json import load, dump
@@ -10,7 +10,7 @@ import asyncio
 import aiohttp
 import subprocess
 import shutil
-
+import datetime
 
 pre_bot = f"{Fore.BLUE}[BOT]{Style.RESET_ALL}"
 pre_core = f"{Fore.BLUE}[bot.CORE]{Style.RESET_ALL}"
@@ -485,7 +485,6 @@ def remove_server(account_name, server_name, channel_id) -> bool:
     except Exception as e:
         logger.error(e)
 
-
 def is_image(image_url):
     image_formats = ("image/png", "image/jpeg", "image/jpg")
     r = requests.head(image_url)
@@ -493,3 +492,12 @@ def is_image(image_url):
         return True
     return False
 
+def current_time(format):
+    time=datetime.datetime.now()
+    if format.lower()=="h":
+        return time.strftime("%H")
+    elif format.lower()=="m":
+        return time.strftime("%M")
+    elif format.lower()=="s":
+        return time.strftime("%S")
+    
