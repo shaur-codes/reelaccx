@@ -1,4 +1,4 @@
-#m.0.6.0
+#m.0.6.1
 import discord
 from discord.ext import commands
 import os
@@ -223,8 +223,7 @@ async def is_sent(channel_id: str, filename: str) -> bool:
     logger.info(f"{pre_bot} {filename} wasn't found in the last 10 posts.")
     await send_message(channel_id=LOGCHANNEL,message=f"{filename} is ready to be sent.")
     return False
-
-                
+           
 async def upload_video(bot, channel_id, video_file):
     channel = await bot.fetch_channel(channel_id)
     try:
@@ -244,10 +243,9 @@ async def upload_video(bot, channel_id, video_file):
     except Exception as e:
         logger.error(f"{pre_bot} {e}")
 
-
 async def backup():
-    current_time=datetime.now().strftime("%H%M")
-    if int(current_time) >= 2359 and int(current_time) < 200 or int(current_time) >= 1200 and int(current_time) < 1400:
+    ct=datetime.now().strftime("%H%M")
+    if int(ct) >= 2359 and int(ct) < 200 or int(ct) >= 1200 and int(ct) < 1400:
         user = await bot.fetch_user(UID)
         files_to_upload=['.env','records.json','log.log']
         dm_channel = await user.create_dm()
@@ -274,37 +272,44 @@ async def backup():
     else:
         pass
 
-
-
-def backend_task():
-    update_account_records(query=None)
-    data = loadx()
-    if data is None:  
-        return
-
-    for account in data["accounts"]:
-        account_name = account["name"]
-        logger.info(f"{pre} Checking for new post for {account_name}")
-        check_for_post = check_for_new_post(account_name)
-        if check_for_post:
-            latest_post = get_latest_post(account_name)
-            if latest_post:
-                post_url = get_post_url(latest_post)
-                if is_image(post_url):
-                    file=f"{latest_post}.png"
+def task_download():
+    try:
+        ct=int(current_time("h"))
+        data=loadx()
+        tt=int(data["initiated_at"])
+        if tt-ct >= 3:
+            update_account_records(query=None)
+            data = loadx()
+            if data is None:  
+                return
+            for account in data["accounts"]:
+                account_name = account["name"]
+                logger.info(f"{pre} Checking for new post for {account_name}")
+                check_for_post = check_for_new_post(account_name)
+                if check_for_post:
+                    latest_post = get_latest_post(account_name)
+                    if latest_post:
+                        post_url = get_post_url(latest_post)
+                        if is_image(post_url):
+                            file=f"{latest_post}.png"
+                        else:
+                            file = f"{latest_post}.mp4"
+                        dp = dump_post(url=post_url, filename=file)
+                        if dp:
+                            update_file(username=account_name, file=file)
+                        else:
+                            logger.warning(f"Error in dump_post ~ false")
+                    else:
+                        logger.info(f"No new post found for account {account_name}")
                 else:
-                    file = f"{latest_post}.mp4"
-                dp = dump_post(url=post_url, filename=file)
-                if dp:
-                    update_file(username=account_name, file=file)
-                else:
-                    logger.warning(f"Error in dump_post ~ false")
-            else:
-                logger.info(f"No new post found for account {account_name}")
+                    logger.info(f"No new post to check for account {account_name}")
         else:
-            logger.info(f"No new post to check for account {account_name}")
+            pass
+    except Exception as e:
+        logger.info(e)
 
-async def frontend_task(bot):
+
+async def task_upload(bot):
     data = loadx()
     if data is None:
         return
@@ -351,7 +356,8 @@ async def frontend_task(bot):
             except Exception as e:
                 logger.error(f"Error removing file {file}: {e}")
                 await send_message(LOGCHANNEL, message=f"Error removing file {file}: {e}")
-
+    ct=current_time(format="h")
+    data["initiated_at"]=ct
     dumpx(data)
 
 async def combined_task():
@@ -359,9 +365,9 @@ async def combined_task():
     logger.info(f"{pre} initiating backup")
     await backup()
     logger.info(f"{pre} initiating backend task")
-    await loop.run_in_executor(None, backend_task)
+    await loop.run_in_executor(None, task_download)
     logger.info(f"{pre} initiating frontend task")
-    await frontend_task(bot=bot)
+    await task_upload(bot=bot)
         
 @bot.event
 async def on_ready():
@@ -369,7 +375,7 @@ async def on_ready():
     logger.info(f"synced {times_synced} commands")
     print(f'We have logged in as {bot.user}')
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(combined_task, 'interval', hours=3,next_run_time=datetime.now())
+    scheduler.add_job(combined_task, 'interval', hours=1,next_run_time=datetime.now())
     scheduler.start()
 
 check_and_create()
