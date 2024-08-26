@@ -65,10 +65,12 @@ async def uptime(interaction: discord.Interaction):
 
 @bot.tree.command(name="backup", description="create a backup of important files")
 async def backup_command(interaction: discord.Interaction,member_id:str):
+    if member_id!=VERIFIED_MEMBER_ID:
+        await interaction.response.send_message("you entered a wrong one!!")
     if not interaction.response.is_done():
         await interaction.response.defer()
         try:
-            create_backup(time=False)
+            await create_backup(time=False)
             await interaction.followup.send(f"Done!!")
             logger.info(f"backup_command() was called.")
         except Exception as e:
@@ -283,7 +285,7 @@ async def backup():
     else:
         pass
 
-def create_backup(time:bool):
+async def create_backup(time:bool):
     if time:
         ct=datetime.now().strftime("%H%M")
         if int(ct) >= 2359 and int(ct) < 200 or int(ct) >= 1200 and int(ct) < 1400:
