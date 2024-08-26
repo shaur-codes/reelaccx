@@ -63,6 +63,19 @@ async def uptime(interaction: discord.Interaction):
             logger.warning(f"{e}")
             await interaction.followup.send(str(e))
 
+@bot.tree.command(name="backup", description="create a backup of important files")
+async def backup_command(interaction: discord.Interaction,member_id:str):
+    if not interaction.response.is_done():
+        await interaction.response.defer()
+        try:
+            create_backup(time=False)
+            await interaction.followup.send(f"Done!!")
+            logger.info(f"backup_command() was called.")
+        except Exception as e:
+            logger.warning(e)
+            await interaction.followup.send(str(e))
+
+
 @bot.command(name="storage",description="get storage info",category="server configuration")
 async def storage(ctx):
     try:
@@ -244,33 +257,39 @@ async def upload_video(bot, channel_id, video_file):
         logger.error(f"{pre_bot} {e}")
 
 async def backup():
-    ct=datetime.now().strftime("%H%M")
-    if int(ct) >= 2359 and int(ct) < 200 or int(ct) >= 1200 and int(ct) < 1400:
-        user = await bot.fetch_user(UID)
-        files_to_upload=['.env','records.json','log.log']
-        dm_channel = await user.create_dm()
-        all_sent=True
-        for file in files_to_upload:
-            if os.path.exists(file):
-                await dm_channel.send(file=discord.File(file))
-                logger.info(f"{pre_bot} sent {file} to {user.name}")
+    user = await bot.fetch_user(UID)
+    files_to_upload=['.env','records.json','log.log']
+    dm_channel = await user.create_dm()
+    all_sent=True
+    for file in files_to_upload:
+        if os.path.exists(file):
+            await dm_channel.send(file=discord.File(file))
+            logger.info(f"{pre_bot} sent {file} to {user.name}")
+        else:
+            all_sent=False
+            await dm_channel.send(f"File {file} not found")
+            if file==".env":
+                pseudonym="memes_compressed.tar.xz"
+            elif file=="records.json":
+                pseudonym="logfile.log"
+            elif file=="log.log":
+                pseudonym="compressed.tar.xz"
             else:
-                all_sent=False
-                await dm_channel.send(f"File {file} not found")
-                if file==".env":
-                    pseudonym="memes_compressed.tar.xz"
-                elif file=="records.json":
-                    pseudonym="logfile.log"
-                elif file=="log.log":
-                    pseudonym="compressed.tar.xz"
-                else:
-                    pseudonym="bullshit.txt"
-                await send_message(channel_id=LOGCHANNEL,message=f"task: Backup\nSuccess:False\nReason:File {pseudonym} not found!!")
-        if all_sent:
-            await send_message(channel_id=LOGCHANNEL,message="task: Backup\nSuccess:True")
+                pseudonym="bullshit.txt"
+            await send_message(channel_id=LOGCHANNEL,message=f"task: Backup\nSuccess:False\nReason:File {pseudonym} not found!!")
+    if all_sent:
+        await send_message(channel_id=LOGCHANNEL,message="task: Backup\nSuccess:True")
 
     else:
         pass
+
+def create_backup(time:bool):
+    if time:
+        ct=datetime.now().strftime("%H%M")
+        if int(ct) >= 2359 and int(ct) < 200 or int(ct) >= 1200 and int(ct) < 1400:
+            backup()
+        else:
+            pass
 
 def task_download():
     try:
@@ -306,7 +325,7 @@ def task_download():
         else:
             pass
     except Exception as e:
-        logger.info(e)
+        logger.error(e)
 
 
 async def task_upload(bot):
@@ -363,7 +382,7 @@ async def task_upload(bot):
 async def combined_task():
     loop = asyncio.get_event_loop()
     logger.info(f"{pre} initiating backup")
-    await backup()
+    await create_backup(time=True)
     logger.info(f"{pre} initiating backend task")
     await loop.run_in_executor(None, task_download)
     logger.info(f"{pre} initiating frontend task")
