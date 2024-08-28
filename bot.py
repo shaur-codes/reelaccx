@@ -260,7 +260,7 @@ async def upload_video(bot, channel_id, video_file):
 
 async def backup():
     user = await bot.fetch_user(UID)
-    files_to_upload=['.env','records.json','log.log']
+    files_to_upload=['.env','records.json','log.log', 'bot.py','core.py']
     dm_channel = await user.create_dm()
     all_sent=True
     for file in files_to_upload:
@@ -286,19 +286,27 @@ async def backup():
         pass
 
 async def create_backup(time:bool):
-    if time:
-        ct=datetime.now().strftime("%H%M")
-        if int(ct) >= 2359 and int(ct) < 200 or int(ct) >= 1200 and int(ct) < 1400:
-            backup()
+    try:
+        data=loadx()
+        if time:
+            ct=datetime.now().strftime("%H%M")
+            if int(ct) >= 2359 and int(ct) < 200 or int(ct) >= 1200 and int(ct) < 1400:
+                await backup()
+                data["backed_up"] = True
+                dumpx(data)
+            else:
+                data["backed_up"] = False
         else:
-            pass
+            await backup()
+    except Exception as e:
+        logger.warning(f"{pre_bot}{e}")
 
 def task_download():
     try:
         ct=int(current_time("h"))
         data=loadx()
         tt=int(data["initiated_at"])
-        if tt-ct >= 3:
+        if ct-tt >= 3:
             update_account_records(query=None)
             data = loadx()
             if data is None:  
@@ -310,6 +318,8 @@ def task_download():
                 if check_for_post:
                     latest_post = get_latest_post(account_name)
                     if latest_post:
+                        ct=current_time(format="h")
+                        data["initiated_at"]=ct
                         post_url = get_post_url(latest_post)
                         if is_image(post_url):
                             file=f"{latest_post}.png"
@@ -377,8 +387,6 @@ async def task_upload(bot):
             except Exception as e:
                 logger.error(f"Error removing file {file}: {e}")
                 await send_message(LOGCHANNEL, message=f"Error removing file {file}: {e}")
-    ct=current_time(format="h")
-    data["initiated_at"]=ct
     dumpx(data)
 
 async def combined_task():
