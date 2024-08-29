@@ -404,7 +404,7 @@ async def on_ready():
     logger.info(f"synced {times_synced} commands")
     print(f'We have logged in as {bot.user}')
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(combined_task, 'interval', hours=1,next_run_time=datetime.now())
+    scheduler.add_job(combined_task, 'interval', hours=2,next_run_time=datetime.now())
     scheduler.start()
 
 check_and_create()
