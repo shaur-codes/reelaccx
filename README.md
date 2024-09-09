@@ -1,4 +1,3 @@
-```markdown
 # ReelAccX
 
 ReelAccX is a versatile Discord bot designed to manage Instagram accounts and automate interactions with various servers. It allows you to add and remove Instagram accounts, manage channels, and back up important files, among other functionalities.
@@ -104,6 +103,3 @@ For further assistance, you can reach out via:
 
 - **Email:** shaur.codes@gmail.com
 - **GitHub Issues:** [ReelAccX Issues](https://github.com/shaur-codes/reelaccx/issues)
-```
-
-Copy this text into a file named `README.md` and place it in the root directory of your project. This Markdown-formatted README will help both developers and users understand how to work with and contribute to your project.
