@@ -1,6 +1,6 @@
 # ReelAccX
 
-ReelAccX is a versatile Discord bot designed to manage Instagram accounts and automate interactions with various servers. It allows you to add and remove Instagram accounts, manage channels, and back up important files, among other functionalities.
+ReelAccX is a versatile Discord bot designed to send Instagram Reels across various servers. It allows you to manage Instagram accounts, add or remove channels, and back up important files, among other functionalities. With ReelAccX, you can share engaging Reels on a wide range of topics.
 
 ## Table of Contents
 1. [Features](#features)
