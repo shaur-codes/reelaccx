@@ -4,13 +4,14 @@ ReelAccX is a versatile Discord bot designed to send Instagram Reels across vari
 
 ## Table of Contents
 1. [Features](#features)
-2. [Installation](#installation)
-3. [Configuration](#configuration)
-4. [Usage](#usage)
-5. [Commands](#commands)
-6. [Contributing](#contributing)
-7. [License](#license)
-8. [Contact](#contact)
+2. [Perks of installing ReelAccX] (#Popular Reels Topics)
+3. [Installation](#installation)
+4. [Configuration](#configuration)
+5. [Usage](#usage)
+6. [Commands](#commands)
+7. [Contributing](#contributing)
+8. [License](#license)
+9. [Contact](#contact)
 
 ## Features
 - **Temperature Monitoring:** Check the bot's CPU temperature.
@@ -19,6 +20,18 @@ ReelAccX is a versatile Discord bot designed to send Instagram Reels across vari
 - **Storage Information:** Get information about the bot's storage usage.
 - **Account Management:** Add or remove Instagram accounts and manage their associated servers and channels.
 - **File Uploads:** Upload videos to specified channels and servers.
+
+## Popular Reels Topics
+
+ReelAccX supports sharing Instagram Reels on various popular topics, including but not limited to:
+
+1. **Memes:** Humorous and viral content.
+2. **Informational Videos:** Educational and how-to content.
+3. **Fitness Tips:** Workout routines and fitness advice.
+4. **Food Recipes:** Cooking demonstrations and recipe ideas.
+5. **Travel Adventures:** Destination highlights and travel tips.
+6. **Fashion Trends:** Outfit ideas and fashion advice.
+7. **DIY Projects:** Creative and craft-based tutorials.
 
 ## Installation
 
