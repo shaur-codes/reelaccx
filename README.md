@@ -1,6 +1,6 @@
 # ReelAccX
 
-ReelAccX is a versatile Discord bot designed to send Instagram Reels across various servers to prevent your server from going inactive by increasing user engagement. It allows you to manage Instagram accounts from where you want to get reels, add or remove channels, and back up its database, among other functionalities. With ReelAccX, you can receive engaging Reels on a wide range of topics.
+ReelAccX is a versatile Discord bot designed to send Short videos across various servers to prevent your server from going inactive by increasing user engagement. It allows you to manage accounts from where you want to get videos, add or remove channels, and back up its database, among other functionalities. With ReelAccX, you can receive engaging short videos on a wide range of topics.
 
 ## Table of Contents
 1. [Features](#features)
@@ -23,7 +23,7 @@ ReelAccX is a versatile Discord bot designed to send Instagram Reels across vari
 
 ## Perks
 
-ReelAccX supports sharing Instagram Reels on various popular topics, including but not limited to:
+ReelAccX supports sharing short videos on various popular topics, including but not limited to:
 
 1. **Memes:** Humorous and viral content.
 2. **Informational Videos:** Educational and how-to content.
