@@ -103,7 +103,9 @@ We are using A Raspberry-Pi 5 server for deployment.
 # here is how our server exaclty looks like
 ![headquarter](https://github.com/user-attachments/assets/8912f2a6-c64a-4238-9171-6c44a670b2db)
 
-yeah it's floating and it receives videos out of thin air!!
+it has an active cooler installed inside the case itself but i use it as a backup.
+As an active cooler i use this Fan that's visible in the image.
+yeah the server is floating and it receives videos out of thin air!!
 
 
 ## Contributing
