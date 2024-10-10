@@ -9,9 +9,10 @@ ReelAccX is a versatile Discord bot designed to send Short videos across various
 4. [Configuration](#configuration)
 5. [Usage](#usage)
 6. [Commands](#commands)
-7. [Contributing](#contributing)
-8. [License](#license)
-9. [Contact](#contact)
+7. [Our own RPI Server](#server)
+8. [Contributing](#contributing)
+9. [License](#license)
+10. [Contact](#contact)
 
 ## Features
 - **Temperature Monitoring:** Check the bot's CPU temperature.
@@ -95,6 +96,15 @@ Once the bot is running, you can interact with it using the following commands.
 - **`/rmchannel <username> <server_name> <channel_id> <member_id>`**: Removes a channel from the bot (requires verified member ID).
 - **`/lsaccounts <member_id>`**: Lists all Instagram accounts and their associated servers (requires verified member ID).
 - **`/hlp <member_id>`**: Provides a description of available commands (requires verified member ID).
+## server
+We are using A Raspberry-Pi 5 server for deployment.
+![rpi](https://github.com/user-attachments/assets/3b59ae7a-25d9-4e9b-bbda-3435b62e2f4b)
+
+# here is how our server exaclty looks like
+![headquarter](https://github.com/user-attachments/assets/8912f2a6-c64a-4238-9171-6c44a670b2db)
+
+yeah it's floating and it receives videos out of thin air!!
+
 
 ## Contributing
 
