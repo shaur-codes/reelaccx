@@ -1,6 +1,6 @@
 # ReelAccX
 
-ReelAccX is a versatile Discord bot designed to send Short videos across various servers to prevent your server from going inactive by increasing user engagement. It allows you to manage accounts from where you want to get videos, add or remove channels, and back up its database, among other functionalities. With ReelAccX, you can receive engaging short videos on a wide range of topics.
+ReelAccX is a Discord bot designed to send Short videos or memes across various servers to prevent your server from going inactive by increasing user engagement, when my friend was in need of such a bot and he could not find one I had to develop this bot well, it has the potential to be a renowned discord bot if developed further. It allows you to manage accounts from where you want to get videos, add or remove channels, and back up its database, among other functionalities. With ReelAccX, you can receive engaging short videos on a wide range of topics.
 
 ## Table of Contents
 1. [Features](#features)
